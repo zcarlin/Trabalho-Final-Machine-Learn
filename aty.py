@@ -602,7 +602,7 @@ def recompensa(estado, acao, modo= 'extremo'):
 historico = []
 
 # Episódios de simulação
-for episodio in range(1, 201):
+for episodio in range(1, 151):
     estado = random.choice(['seco', 'ideal', 'encharcado'])
     for passo in range(1): # Um passo por episódio (simplificação)
         if random.random() < epsilon:
