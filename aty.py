@@ -26,7 +26,6 @@ import numpy as np
 import matplotlib.pyplot as plt 
 import seaborn as sns 
 from IPython.display import display
-
 # Abrindo o Arquivo
 df = pd.read_csv("DataSet.csv", sep=';', decimal=',')
 
@@ -72,17 +71,17 @@ plt.ylabel('Produtividade (kg/ha)', fontsize=12)
 plt.xticks(fontsize=10) 
 plt.yticks(fontsize=10) 
 plt.tight_layout() 
-plt.show() 
+#plt.show() 
 sns.scatterplot(data=df, x='temp_flor', y='produtividade', \
                 hue='ENSO', s=80, alpha=0.8) 
 plt.title('Temperatura durante floração vs. Produtividade', fontsize=14) 
 plt.xlabel('Temperatura média durante floração (°C)', fontsize=12) 
 plt.ylabel('Produtividade (kg/ha)', fontsize=12) 
 plt.legend(title='Evento ENSO') 
-plt.show()
+#plt.show()
 df.select_dtypes(include='number').hist(bins=15, figsize=(12,8)) 
 plt.suptitle("Distribuições das variáveis numéricas") 
-plt.show() 
+#plt.show() 
 # Seleciona só as colunas numéricas relevantes 
 variaveis_numericas = df.select_dtypes(include='number') 
 13 
@@ -102,7 +101,7 @@ vmin=-1, vmax=1
 ) 
 plt.title('Matriz de Correlação entre Variáveis Numéricas') 
 plt.tight_layout() 
-plt.show() 
+#plt.show() 
 # Seleciona as variáveis numéricas (sem o ano) 
 cols_plot = ['chuva_flor', 'chuva_colheita', 'chuva_total', 
 'anomalia_flor', 'temp_flor', 'umid_flor', 'produtividade'] 
@@ -115,7 +114,7 @@ diag_kind='hist', # ou 'kde'
 plot_kws={'alpha': 0.7, 's': 40, 'edgecolor': 'k'} 
 ) 
 plt.suptitle("Matriz de Dispersão entre Variáveis", fontsize=14, y=1.02) 
-plt.show()
+#plt.show()
 # 1. Chuva relativa durante floração 
 df['chuva_relativa'] = df['chuva_flor'] / df['chuva_total'] 
 # 2. Binário: anomalia positiva ou não 
@@ -152,7 +151,7 @@ plt.xlabel('Componente Principal')
 plt.ylabel('Proporção da Variância') 
 plt.grid(True) 
 plt.tight_layout() 
-plt.show() 
+#plt.show() 
 # Mostrar numericamente 
 for i, v in enumerate(pca_full.explained_variance_ratio_): 
     print(f"PC{i+1}: {v:.2%}")
@@ -169,7 +168,7 @@ plt.xlabel('Componente Principal 1')
 plt.ylabel('Componente Principal 2') 
 plt.legend(title='Safra') 
 plt.tight_layout() 
-plt.show() 
+#plt.show() 
 # Pipeline: pré-processador + modelo 
 pipeline_original = make_pipeline(preprocessador, LinearRegression()) 
 # Treinamento 
@@ -238,7 +237,7 @@ plt.title("Comparação do RMSE em função de λ (Ridge)")
 plt.grid(True) 
 plt.legend() 
 plt.tight_layout() 
-plt.show() 
+#plt.show() 
 def plot_modelos_para_variavel(x_var, X, y, scaler, pca_model, modelo_linear, 
 modelo_ridge, modelo_pca, modelo_pca_ridge): 
     x_index = X.columns.get_loc(x_var) 
@@ -270,7 +269,7 @@ modelo_ridge, modelo_pca, modelo_pca_ridge):
     34 
     plt.grid(True) 
     plt.tight_layout() 
-    plt.show() 
+    #plt.show() 
     # 1. Reconstrução de X e y 
 X = df[[ 
 'chuva_flor', 'chuva_colheita', 'chuva_total', 
@@ -293,7 +292,7 @@ modelo_pca = LinearRegression().fit(X_pca, y)
 modelo_pca_ridge = Ridge(alpha=1e5).fit(X_pca, y) 
 plot_modelos_para_variavel('temp_flor', X, y, scaler, pca_model, 
 modelo_linear, modelo_ridge, modelo_pca, modelo_pca_ridge)
-plt.show()
+#plt.show()
 #### Curva 1D da função custo 
 def plot_funcao_custo_1D(x_var, X, y, intervalo=(-200, 200), pontos=200): 
 # """ Plota a função de custo J(θ₁) para uma regressão univariada com a 
@@ -313,7 +312,7 @@ def plot_funcao_custo_1D(x_var, X, y, intervalo=(-200, 200), pontos=200):
     plt.title(f"Função de Custo - {x_var} (x centralizado)") 
     plt.grid(True) 
     plt.tight_layout() 
-    plt.show() 
+    #plt.show() 
 plot_funcao_custo_1D('temp_flor', X, y) 
 def plot_funcao_custo_2D(x_vars, X, y, range_theta=(-200, 200), pontos=100): 
 
@@ -345,7 +344,7 @@ def plot_funcao_custo_2D(x_vars, X, y, range_theta=(-200, 200), pontos=100):
     ax.set_title(f"Superfície da Função de Custo — {x_vars[0]} e {x_vars[1]}") 
 # plt.tight_layout() 
     fig.subplots_adjust(right=0.5) 
-    plt.show() 
+    #plt.show() 
 # Para um gráfico específico 
 plot_funcao_custo_2D(['temp_flor', 'chuva_flor'], X, y)
 def plot_funcao_custo_2D_PCA(X_pca, y, range_theta=(-200, 200), pontos=100):
@@ -373,7 +372,7 @@ def plot_funcao_custo_2D_PCA(X_pca, y, range_theta=(-200, 200), pontos=100):
     ax.set_zlabel("J(θ)") 
     ax.set_title("Superfície da Função de Custo — Componentes Principais (PCA)") 
     fig.subplots_adjust(right=0.85) 
-    plt.show() 
+    #plt.show() 
 plot_funcao_custo_2D_PCA(X_pca, y)
 def plot_residuos(y_true, y_pred, titulo): 
     residuos = y_true - y_pred 
@@ -385,7 +384,7 @@ def plot_residuos(y_true, y_pred, titulo):
     plt.title(f"Resíduos — {titulo}") 
     plt.grid(True) 
     plt.tight_layout() 
-    plt.show() 
+    #plt.show() 
     print("\n")
 # Previsões 
 y_pred_linear = modelo_linear.predict(X_scaled) 
@@ -451,7 +450,7 @@ def plotar_curva_roc_multiclasse(y_true, y_score, classes, titulo="Modelo"):
         plt.legend(loc="lower right") 
         plt.grid(True) 
         plt.tight_layout() 
-        plt.show()
+        #plt.show()
         # Função de avaliação completa 
     def avaliar_modelo_classificacao(nome, y_true, y_pred, y_prob=None, 
     classes=[0, 1, 2]): 
@@ -464,7 +463,7 @@ def plotar_curva_roc_multiclasse(y_true, y_score, classes, titulo="Modelo"):
         plt.ylabel("Real") 
         plt.title(f"Matriz de Confusão — {nome}", pad=12) 
         plt.tight_layout() 
-        plt.show() 
+        #plt.show() 
         # Métricas textuais 
         print(f"\nAvaliação — {nome}") 
         print("Acurácia:", accuracy_score(y_true, y_pred)) 
@@ -512,7 +511,7 @@ def plotar_curva_roc_multiclasse(y_true, y_score, classes, titulo="Modelo"):
         plt.legend(handles=scatter.legend_elements()[0], labels=['Baixa','Média', 'Alta'])
         plt.grid(True)
         plt.tight_layout()
-        plt.show() 
+        #plt.show() 
     plot_fronteira_decisao_2D(X_class_pca, y_class, modelo_pca_class,
     titulo="Fronteiras de Decisão — PCA + Regressão Logística")
 
@@ -545,9 +544,8 @@ def transicao(estado, acao):
         if acao == 'regar': return 'encharcado'
         elif acao == 'pouca_agua': return 'ideal'
         else: return 'ideal'
-
-x12= input("digite o modo 'extremo' ou 'padrao'")
-def recompensa(estado, acao, modo= x12):
+# x12= input("digite o modo 'extremo' ou 'padrao'")
+def recompensa(estado, acao, modo= 'extremo'):
     # Tabela de recompensas para o modo padrão
     padrao = {
         'seco': {
@@ -604,7 +602,7 @@ def recompensa(estado, acao, modo= x12):
 historico = []
 
 # Episódios de simulação
-for episodio in range(1, 51):
+for episodio in range(1, 201):
     estado = random.choice(['seco', 'ideal', 'encharcado'])
     for passo in range(1): # Um passo por episódio (simplificação)
         if random.random() < epsilon:
@@ -636,3 +634,19 @@ print(q_df)
 # Mostra histórico das decisões
 historico_df = pd.DataFrame(historico)
 display(historico_df.tail(10))
+
+#=======FEITO=======#
+# 1. Altere as recompensas 
+# a) Penalize mais o desperdício de água. 
+
+# b) Recompense melhor ações que mantêm o solo em estado ideal. 
+#==========-----------------========================----------==#
+
+# 2. Aumente o número de episódios 
+# a) Altere range(1, 51) para range(1, 201) e observe. linha 605
+#  a ação com maior valor na Tabela Q é considerada a mais vantajosa, ou seja, a decisão preferida pelo agente.
+#  ▪
+#  A Tabela Q se estabiliza melhor? 
+#   sim 
+# O agente passa a evitar ações ruins com mais consistência?
+# sim
