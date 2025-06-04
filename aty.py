@@ -519,68 +519,98 @@ import random
 # Parâmetros
 alpha = 0.5 # taxa de aprendizado
 gamma = 0.9 # fator de desconto
-epsilon = 0.2 # chance de explorar
+epsilon = 0.5 # chance de explorar
 
 # Inicializa a Tabela Q
 
 q_table = {
-'seco': {'regar': 0.0, 'pouca_agua': 0.0, 'nao_regar': 0.0},
-'ideal': {'regar': 0.0, 'pouca_agua': 0.0, 'nao_regar': 0.0},
-'encharcado': {'regar': 0.0, 'pouca_agua': 0.0, 'nao_regar': 0.0},
+'muito_seco': {'muita_agua': 0.0, 'regar': 0.0, 'pouca_agua': 0.0, 'nao_regar': 0.0},
+'seco': {'muita_agua': 0.0, 'regar': 0.0, 'pouca_agua': 0.0, 'nao_regar': 0.0},
+'ideal': {'muita_agua': 0.0, 'regar': 0.0, 'pouca_agua': 0.0, 'nao_regar': 0.0},
+'encharcado': {'muita_agua': 0.0, 'regar': 0.0, 'pouca_agua': 0.0, 'nao_regar': 0.0},
 }
 
 
 # Função de transição: próximo estado baseado em estado atual e ação
 def transicao(estado, acao):
-    if estado == 'seco':
+    if estado == 'muito_seco':
+        if acao == 'pouca_agua': return 'muito_seco'
+        elif acao == 'regar': return 'seco'
+        elif acao == 'muita_agua': return 'ideal'
+        else: return 'muito_seco'
+    elif estado == 'seco':
         if acao == 'regar': return 'ideal'
         elif acao == 'pouca_agua': return 'seco'
+        elif acao == 'muita_agua': return 'encharcado'
         else: return 'seco'
     elif estado == 'ideal':
         if acao == 'regar': return 'encharcado'
         elif acao == 'pouca_agua': return 'ideal'
+        elif acao == 'muita_agua': return 'encharcado'
         else: return 'seco'
     elif estado == 'encharcado':
         if acao == 'regar': return 'encharcado'
         elif acao == 'pouca_agua': return 'ideal'
+        elif acao == 'muita_agua': return 'encharcado'
         else: return 'ideal'
+
 # x12= input("digite o modo 'extremo' ou 'padrao'")
-def recompensa(estado, acao, modo= 'extremo'):
+def recompensa(estado, acao, modo= 'padrao'):
     # Tabela de recompensas para o modo padrão
     padrao = {
+        'muito_seco': {
+            'regar': 3,
+            'pouca_agua': 1,
+            'nao_regar': -1,
+            'muita_agua': 5
+        },
+
         'seco': {
             'regar': 5,
             'pouca_agua': 2,
-            'nao_regar': -1
+            'nao_regar': -1,
+            'muita_agua': -3
         },
         'ideal': {
             'nao_regar': 5,
             'pouca_agua': 2,
-            'regar': -3
+            'regar': -3,
+            'muita_agua': -5
         },
         'encharcado': {
             'nao_regar': 2,
             'pouca_agua': -1,
-            'regar': -5
+            'regar': -3,
+            'muita_agua': -5
         }
     }
 
     # Tabela de recompensas para o modo extremo
     extremo = {
+        'muito_seco': {
+            'regar': 6,
+            'pouca_agua': 0,
+            'nao_regar': -3,
+            'muita_agua': 8
+        },
+
         'seco': {
-            'regar': 10,
+            'regar': 8,
             'pouca_agua': 5,
-            'nao_regar': -3
+            'nao_regar': -4,
+            'muita_agua': -6
         },
         'ideal': {
-            'nao_regar': 10,
-            'pouca_agua': -1,
-            'regar': -6
+            'nao_regar': -2,
+            'pouca_agua': 4,
+            'regar': 7,
+            'muita_agua': -4
         },
         'encharcado': {
-            'nao_regar': 4,
-            'pouca_agua': -3,
-            'regar': -10
+            'nao_regar': -4,
+            'pouca_agua': -2,
+            'regar': 3,
+            'muita_agua': -6
         }
     }
 
@@ -602,11 +632,11 @@ def recompensa(estado, acao, modo= 'extremo'):
 historico = []
 
 # Episódios de simulação
-for episodio in range(1, 151):
-    estado = random.choice(['seco', 'ideal', 'encharcado'])
+for episodio in range(1, 201):
+    estado = random.choice(['muito_seco','seco', 'ideal', 'encharcado'])
     for passo in range(1): # Um passo por episódio (simplificação)
         if random.random() < epsilon:
-            acao = random.choice(['regar', 'pouca_agua', 'nao_regar'])
+            acao = random.choice(['muita_agua','regar', 'pouca_agua', 'nao_regar'])
         else:
             acao = max(q_table[estado], key=q_table[estado].get)
         prox_estado = transicao(estado, acao)
@@ -647,6 +677,6 @@ display(historico_df.tail(10))
 #  a ação com maior valor na Tabela Q é considerada a mais vantajosa, ou seja, a decisão preferida pelo agente.
 #  ▪
 #  A Tabela Q se estabiliza melhor? 
-#   sim 
+#   sim 👌
 # O agente passa a evitar ações ruins com mais consistência?
-# sim
+#   sim 👌
