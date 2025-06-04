@@ -546,19 +546,57 @@ def transicao(estado, acao):
         elif acao == 'pouca_agua': return 'ideal'
         else: return 'ideal'
 
-def recompensa(estado, acao):
-    if estado == 'seco':
-        if acao == 'regar': return 5
-        elif acao == 'pouca_agua': return 2
-        else: return -1
-    elif estado == 'ideal':
-        if acao == 'nao_regar': return 5
-        elif acao == 'pouca_agua': return 2
-        else: return -3
-    elif estado == 'encharcado':
-        if acao == 'nao_regar': return 2
-        elif acao == 'pouca_agua': return -1
-        else: return -5
+x12= input("digite o modo 'extremo' ou 'padrao'")
+def recompensa(estado, acao, modo= x12):
+    # Tabela de recompensas para o modo padrão
+    padrao = {
+        'seco': {
+            'regar': 5,
+            'pouca_agua': 2,
+            'nao_regar': -1
+        },
+        'ideal': {
+            'nao_regar': 5,
+            'pouca_agua': 2,
+            'regar': -3
+        },
+        'encharcado': {
+            'nao_regar': 2,
+            'pouca_agua': -1,
+            'regar': -5
+        }
+    }
+
+    # Tabela de recompensas para o modo extremo
+    extremo = {
+        'seco': {
+            'regar': 10,
+            'pouca_agua': 5,
+            'nao_regar': -3
+        },
+        'ideal': {
+            'nao_regar': 10,
+            'pouca_agua': -1,
+            'regar': -6
+        },
+        'encharcado': {
+            'nao_regar': 4,
+            'pouca_agua': -3,
+            'regar': -10
+        }
+    }
+
+    # Seleciona a tabela certa com base no modo
+    tabelas = {
+        'padrao': padrao,
+        'extremo': extremo
+    }
+
+    if modo not in tabelas:
+        raise ValueError("Modo inválido. Use 'padrao' ou 'extremo'.")
+
+    return tabelas[modo][estado].get(acao, -10)  # Penalidade extra se ação inválida
+
 
 
 # Registro para exibir evolução
