@@ -93,30 +93,31 @@ def carregar_dados():
     print(df.describe().T)
 
 def criar_variaveis_adicionais():
-    """Cria variáveis sazonais e climáticas adicionais"""
-    global df
-    
-    # 1. Chuva relativa durante floração 
+    global df, df_raw
+
+    # Salva o original antes das dummies
+    df_raw = df.copy()
+
+    # Cria variáveis adicionais no df_raw também (para gráficos)
+    df_raw['chuva_relativa'] = df_raw['chuva_flor'] / df_raw['chuva_total'] 
+    df_raw['anomalia_bin'] = (df_raw['anomalia_flor'] > 0).astype(int)
+
+    # Agora no df (com dummies para análise estatística/machine learning)
+    df = pd.get_dummies(df, columns=['ENSO'], drop_first=True)
     df['chuva_relativa'] = df['chuva_flor'] / df['chuva_total'] 
-    # 2. Binário: anomalia positiva ou não 
-    df['anomalia_bin'] = (df['anomalia_flor'] > 0).astype(int) 
-    # 3. Codificar ENSO como variáveis dummies 
-    df = pd.get_dummies(df, columns=['ENSO'], drop_first=True) # cria ENSO_El Niño e ENSO_La Niña 
-    
-    print("Variáveis adicionais criadas!")
-    print("\nPrimeiras 10 linhas com novas variáveis:")
-    print(df.head(10))
-    print("\nVariáveis ENSO:")
-    print(df.filter(like='ENSO').tail(10))
+    df['anomalia_bin'] = (df['anomalia_flor'] > 0).astype(int)
+
 
 # Boxplot: ENSO × Produtividade
 def bloxplot():
+    global df_raw
+
     sns.set(style="whitegrid", palette="colorblind") 
     sns.boxplot( 
-    data=df, 
-    x='ENSO', 
-    y='produtividade', 
-    order=['La Niña', 'Neutro', 'El Niño'] 
+        data=df_raw, 
+        x='ENSO', 
+        y='produtividade', 
+        order=['La Niña', 'Neutro', 'El Niño'] 
     ) 
     plt.title('Produtividade vs. Evento ENSO', fontsize=14) 
     plt.xlabel('Evento ENSO', fontsize=12) 
@@ -124,12 +125,15 @@ def bloxplot():
     plt.xticks(fontsize=10) 
     plt.yticks(fontsize=10) 
     plt.tight_layout() 
-    plt.show() 
+    plt.show()
 
 # Scatter: Temperatura x Produtividade
 def scatterplot():
+
+   
+
     sns.scatterplot(data=df, x='temp_flor', y='produtividade', \
-                    hue='ENSO', s=80, alpha=0.8) 
+                    hue='ENSO_La Niña', s=80, alpha=0.8) 
     plt.title('Temperatura durante floração vs. Produtividade', fontsize=14) 
     plt.xlabel('Temperatura média durante floração (°C)', fontsize=12) 
     plt.ylabel('Produtividade (kg/ha)', fontsize=12) 
