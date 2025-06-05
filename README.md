@@ -73,5 +73,4 @@ Este projeto implementa um sistema completo de análise de dados agrícolas que 
 - Código totalmente modularizado em funções
 - Menu interativo para facilitar o uso
 - Possibilidade de executar análises individuais ou pipeline completo
-- Comentários preservados do código original
 - Estrutura clara e organizada
