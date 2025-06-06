@@ -23,6 +23,8 @@ import random
 import threading
 import sys
 from io import StringIO
+import requests
+from io import BytesIO
 
 # Configuração do tema
 ctk.set_appearance_mode("dark")
@@ -1422,10 +1424,27 @@ login_window.geometry(f"600x700+{int(x)}+{int(y)}")
 main_frame = tk.Frame(login_window, bg='#2196F3')  # Fundo azul
 main_frame.pack(pady=30, fill="both", expand=True)
     
+# URLs das imagens
+sonic_url = "https://raw.githubusercontent.com/zcarlin/Trabalho-Final-Machine-Learn/main/sonic.png"
+citha_url = "https://raw.githubusercontent.com/zcarlin/Trabalho-Final-Machine-Learn/main/citha.png"
+
 # Carrega e redimensiona as imagens
 try:
-    sonic_photo = ImageTk.PhotoImage(Image.open("sonic.png").resize((150, 150)))
-    citha_photo = ImageTk.PhotoImage(Image.open("citha.png").resize((150, 150)))
+    # Carrega imagem do Sonic
+    response = requests.get(sonic_url, timeout=10)
+    if response.status_code == 200:
+        sonic_image = Image.open(BytesIO(response.content))
+        sonic_photo = ImageTk.PhotoImage(sonic_image.resize((150, 150)))
+    else:
+        sonic_photo = None
+    
+    # Carrega imagem da CITHA
+    response = requests.get(citha_url, timeout=10)
+    if response.status_code == 200:
+        citha_image = Image.open(BytesIO(response.content))
+        citha_photo = ImageTk.PhotoImage(citha_image.resize((150, 150)))
+    else:
+        citha_photo = None
 except Exception as e:
     messagebox.showerror("Erro", f"Erro ao carregar imagens: {str(e)}")
     sonic_photo = None
