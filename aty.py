@@ -1,1014 +1,1407 @@
-# O que vamos investigar? 
-# Nosso objetivo é usar esses dados para construir modelos capazes de: 
-# ✔ Prever a produtividade da safra (tarefa de regressão); 
-# ✔ Classificar a safra como baixa, média ou alta (tarefa de classificação).
-
-# Mas antes de aplicar modelos, precisamos entender bem: 
-# 1. As variáveis disponíveis; 
-# 2. As relações entre elas; 
-# 3. A motivação por trás dessas previsões. 
-
-# Etapa 1 — Importação de bibliotecas
-from sklearn.linear_model import LogisticRegression 
-from sklearn.multiclass import OneVsRestClassifier 
-from itertools import combinations 
-from mpl_toolkits.mplot3d import Axes3D  
-from sklearn.linear_model import LinearRegression, Ridge 
-from sklearn.pipeline import make_pipeline 
-from sklearn.metrics import mean_squared_error, r2_score 
-from sklearn.decomposition import PCA 
-from sklearn.model_selection import train_test_split 
-from sklearn.preprocessing import StandardScaler 
-from sklearn.compose import ColumnTransformer  
-import pandas as pd 
-import numpy as np 
-import matplotlib.pyplot as plt 
-import seaborn as sns 
-from IPython.display import display
-import random
-from sklearn.metrics import confusion_matrix, accuracy_score, f1_score, classification_report
-from sklearn.preprocessing import label_binarize 
-from sklearn.metrics import roc_curve, auc 
-from itertools import cycle
+import customtkinter as ctk
+import tkinter as tk
+from tkinter import ttk, messagebox, scrolledtext
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import seaborn as sns
+from sklearn.linear_model import LogisticRegression, LinearRegression, Ridge
+from sklearn.multiclass import OneVsRestClassifier
+from sklearn.decomposition import PCA
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler, label_binarize
+from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import make_pipeline
+from sklearn.metrics import mean_squared_error, r2_score, confusion_matrix, accuracy_score, f1_score, classification_report, roc_curve, auc
+from itertools import combinations, cycle
+from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.colors import ListedColormap
+import random
+import threading
+import sys
+from io import StringIO
 
-# Variáveis globais para armazenar dados e modelos
-df = None
-X = None
-y = None
-X_scaled = None
-X_pca = None
-df_PCA = None
-scaler = None
-pca_model = None
-modelo_linear = None
-modelo_ridge = None
-modelo_pca = None
-modelo_pca_ridge = None
-X_class = None
-y_class = None
-X_class_scaled = None
-X_class_pca = None
-modelo_classico = None
-modelo_pca_class = None
+# Configuração do tema
+ctk.set_appearance_mode("dark")
+ctk.set_default_color_theme("blue")
 
-def carregar_dados():
-    """Carrega e prepara os dados iniciais"""
-    global df
-    
-    # Abrindo o Arquivo
-    df = pd.read_csv("DataSet.csv", sep=';', decimal=',')
-
-    # Renomeando Colunas
-    df.rename(columns={ 
-    'chuva_durante_floração_mm': 'chuva_flor', 
-    'chuva_durante_colheita_mm': 'chuva_colheita', 
-    'chuva_total_anual_mm': 'chuva_total', 
-    'anomalia_chuva_floração_mm': 'anomalia_flor',
-    'temperatura_média_floração_C': 'temp_flor', 
-    'umidade_relativa_média_floração_%': 'umid_flor', 
-    'evento_ENSO': 'ENSO', 
-    'produtividade_kg_por_ha': 'produtividade', 
-    'produtividade_safra': 'safra' 
-    }, inplace=True) 
-
-    # Transformando em escala fracionaria 
-    df['umid_flor'] = df['umid_flor'] / 100 
-    df.set_index('ano', inplace=True) 
-    
-    print("Dados carregados com sucesso!")
-    print("\nPrimeiras linhas do DataFrame:")
-    print(df.head())
-    
-    # Ver informações gerais do dataframe 
-    print("\nInformações do DataFrame:")
-    df.info() 
-    
-    # Verificar valores ausentes 
-    print("\nValores ausentes por coluna:") 
-    print(df.isnull().sum()) 
-    
-    # Resumo estatístico 
-    print("\nResumo estatístico:")
-    print(df.describe().T)
-
-def criar_variaveis_adicionais():
-    global df, df_raw
-
-    # Salva o original antes das dummies
-    df_raw = df.copy()
-
-    # Cria variáveis adicionais no df_raw também (para gráficos)
-    df_raw['chuva_relativa'] = df_raw['chuva_flor'] / df_raw['chuva_total'] 
-    df_raw['anomalia_bin'] = (df_raw['anomalia_flor'] > 0).astype(int)
-
-    # Agora no df (com dummies para análise estatística/machine learning)
-    df = pd.get_dummies(df, columns=['ENSO'], drop_first=True)
-    df['chuva_relativa'] = df['chuva_flor'] / df['chuva_total'] 
-    df['anomalia_bin'] = (df['anomalia_flor'] > 0).astype(int)
-
-
-# Boxplot: ENSO × Produtividade
-def bloxplot():
-    global df_raw
-
-    sns.set(style="whitegrid", palette="colorblind") 
-    sns.boxplot( 
-        data=df_raw, 
-        x='ENSO', 
-        y='produtividade', 
-        order=['La Niña', 'Neutro', 'El Niño'] 
-    ) 
-    plt.title('Produtividade vs. Evento ENSO', fontsize=14) 
-    plt.xlabel('Evento ENSO', fontsize=12) 
-    plt.ylabel('Produtividade (kg/ha)', fontsize=12) 
-    plt.xticks(fontsize=10) 
-    plt.yticks(fontsize=10) 
-    plt.tight_layout() 
-    plt.show()
-
-# Scatter: Temperatura x Produtividade
-def scatterplot():
-
-   
-
-    sns.scatterplot(data=df, x='temp_flor', y='produtividade', \
-                    hue='ENSO_La Niña', s=80, alpha=0.8) 
-    plt.title('Temperatura durante floração vs. Produtividade', fontsize=14) 
-    plt.xlabel('Temperatura média durante floração (°C)', fontsize=12) 
-    plt.ylabel('Produtividade (kg/ha)', fontsize=12) 
-    plt.legend(title='Evento ENSO') 
-    plt.show()
-
-# HistogramaDEVariaveisNumericas():
-def HistogramaDeVariaveisNumericas():
-    df.select_dtypes(include='number').hist(bins=15, figsize=(12,8)) 
-    plt.suptitle("Distribuições das variáveis numéricas") 
-    plt.show() 
-
-#Heatmap de Correlação():
-def HeatmapDeCorrelacao():
-    # Seleciona só as colunas numéricas relevantes 
-    variaveis_numericas = df.select_dtypes(include='number') 
-    
-    # Calcula a matriz de correlação 
-    correlacao = variaveis_numericas.corr() 
-    # Heatmap 
-    plt.figure(figsize=(10, 6)) 
-    sns.heatmap( 
-    correlacao, 
-    annot=True, 
-    fmt=".2f", 
-    cmap='coolwarm', 
-    linewidths=0.5, 
-    square=True, 
-    cbar_kws={"shrink": .8}, 
-    vmin=-1, vmax=1 
-    ) 
-    plt.title('Matriz de Correlação entre Variáveis Numéricas') 
-    plt.tight_layout() 
-    plt.show()
-
-# Pairplot()
-def pairplot():    
-    # Seleciona as variáveis numéricas (sem o ano) 
-    cols_plot = ['chuva_flor', 'chuva_colheita', 'chuva_total', 
-    'anomalia_flor', 'temp_flor', 'umid_flor', 'produtividade'] 
-    # Pairplot 
-    sns.pairplot( 
-    df[cols_plot], 
-    corner=True, 
-    # evita duplicação acima/abaixo da diagonal 
-    diag_kind='hist', # ou 'kde' 
-    plot_kws={'alpha': 0.7, 's': 40, 'edgecolor': 'k'} 
-    ) 
-    plt.suptitle("Matriz de Dispersão entre Variáveis", fontsize=14, y=1.02) 
-    plt.show()
-
-def analise_exploratoria():
-    """Executa todas as análises exploratórias"""
-    print("\n=== ANÁLISE EXPLORATÓRIA DE DADOS ===\n")
-    
-    opcoes = {
-        '1': ('Boxplot: ENSO × Produtividade', bloxplot),
-        '2': ('Scatter: Temperatura × Produtividade', scatterplot),
-        '3': ('Histograma de Variáveis Numéricas', HistogramaDeVariaveisNumericas),
-        '4': ('Heatmap de Correlação', HeatmapDeCorrelacao),
-        '5': ('Pairplot', pairplot),
-        '6': ('Executar todas as visualizações', None)
-    }
-    
-    print("Escolha uma visualização:")
-    for key, (desc, _) in opcoes.items():
-        print(f"{key}. {desc}")
-    print("0. Voltar ao menu principal")
-    
-    escolha = input("\nDigite sua escolha: ")
-    
-    if escolha == '0':
-        return
-    elif escolha == '6':
-        for key in ['1', '2', '3', '4', '5']:
-            print(f"\nExecutando: {opcoes[key][0]}")
-            opcoes[key][1]()
-    elif escolha in opcoes:
-        print(f"\nExecutando: {opcoes[escolha][0]}")
-        opcoes[escolha][1]()
-    else:
-        print("Opção inválida!")
-
-def preparar_dados_regressao():
-    """Prepara os dados para modelos de regressão"""
-    global X, y, X_train, X_test, y_train, y_test, preprocessador
-    global colunas_numericas, colunas_binarias
-    
-    # 1. Definindo X e y 
-    X = df.drop(columns=['produtividade', 'safra']) # safra é para classificação 
-    y = df['produtividade'] 
-
-    # 2. Verificando colunas numéricas e binárias
-    # Lista de colunas numéricas
-    colunas_numericas = ['chuva_flor', 'chuva_colheita', 'chuva_total', 
-    'anomalia_flor', 'temp_flor', 'umid_flor', 'chuva_relativa']
-    # Lista de colunas binárias 
-    colunas_binarias = ['anomalia_bin', 'ENSO_La Niña', 'ENSO_Neutro'] 
-
-    # 3. Criando o transformador
-    preprocessador = ColumnTransformer(transformers=[('num', StandardScaler(), 
-    colunas_numericas),('bin', 'passthrough', colunas_binarias)]) 
-
-    # 4. Separando treino e teste sem embaralhar (respeitando ordem temporal) 
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, shuffle=False)
-    
-    print("Dados preparados para regressão!")
-    print(f"Tamanho do conjunto de treino: {len(X_train)}")
-    print(f"Tamanho do conjunto de teste: {len(X_test)}")
-
-# Avaliação da variância explicada (Scree Plot)
-def screeplot():
-    global X_padronizado, pca_full, pca, X_pca, df_PCA
-    
-    # Aplica o ColumnTransformer (padronização) 
-    X_padronizado = preprocessador.fit_transform(X) 
-
-    # Aplica PCA com todos os componentes (não limita n_components ainda) 
-    pca_full = PCA() 
-    pca_full.fit(X_padronizado) 
-    # Scree Plot 
-    plt.plot(range(1, len(pca_full.explained_variance_ratio_)+1), 
-    pca_full.explained_variance_ratio_, marker='o') 
-    plt.title('Scree Plot - Variância Explicada por Componente') 
-    plt.xlabel('Componente Principal') 
-    plt.ylabel('Proporção da Variância') 
-    plt.grid(True) 
-    plt.tight_layout() 
-    plt.show() 
-    # Mostrar numericamente 
-    for i, v in enumerate(pca_full.explained_variance_ratio_): 
-        print(f"PC{i+1}: {v:.2%}")
-    # Aplica PCA com 2 componentes 
-    pca = PCA(n_components=2) 
-    X_pca = pca.fit_transform(X_padronizado) 
-    # Cria df_PCA com componentes e variáveis-alvo 
-    df_PCA = pd.DataFrame(X_pca, columns=['PC1', 'PC2'], index=X.index) 
-    df_PCA['produtividade'] = df['produtividade'] 
-    df_PCA['safra'] = df['safra'] 
-    
-    # Visualização 2D dos componentes principais
-    def plot_pca_2d():
-        sns.scatterplot(data=df_PCA, x='PC1', y='PC2', hue='safra', s=80, alpha=0.8) 
-        plt.title('PCA - Componentes Principais coloridos por Safra') 
-        plt.xlabel('Componente Principal 1') 
-        plt.ylabel('Componente Principal 2') 
-        plt.legend(title='Safra') 
-        plt.tight_layout() 
-        plt.show() 
-    plot_pca_2d()
-
-def treinar_modelos_regressao():
-    """Treina todos os modelos de regressão"""
-    global pipeline_original, pipeline_ridge, X_pca, y_pca
-    global X_pca_train, X_pca_test, y_pca_train, y_pca_test
-    global modelo_pca, modelo_pca_ridge
-    global y_pred_orig, y_pred_ridge, y_pred_pca, y_pred_pca_ridge
-    
-    print("\n=== TREINANDO MODELOS DE REGRESSÃO ===\n")
-    
-    # Pipeline: pré-processador + modelo 
-    pipeline_original = make_pipeline(preprocessador, LinearRegression()) 
-    # Treinamento 
-    pipeline_original.fit(X_train, y_train) 
-    # Previsão 
-    y_pred_orig = pipeline_original.predict(X_test) 
-    # Avaliação 
-    mse_orig = mean_squared_error(y_test, y_pred_orig) 
-    rmse_orig = mse_orig ** 0.5 
-    r2_orig = r2_score(y_test, y_pred_orig) 
-    print(f"[Regressão linear] RMSE: {rmse_orig:.2f} | R²: {r2_orig:.2%}")
-    
-    # Pipeline com regularização L2 (Ridge) 
-    lambda_regressao = 1 # testar vários valores para lambda 
-    pipeline_ridge = make_pipeline(preprocessador, Ridge(alpha=lambda_regressao)) 
-    
-    # Treinamento 
-    pipeline_ridge.fit(X_train, y_train) 
-    # Previsão 
-    y_pred_ridge = pipeline_ridge.predict(X_test) 
-    # Avaliação 
-    mse_ridge = mean_squared_error(y_test, y_pred_ridge) 
-    rmse_ridge = mse_ridge ** 0.5 
-    r2_ridge = r2_score(y_test, y_pred_ridge) 
-    print(f"[Regularização Ridge (L²) | λ = {lambda_regressao}] RMSE: {rmse_ridge:.2f} | R²: {r2_ridge:.2%}")
-    
-    # Definindo X e y com base no df_PCA 
-    X_pca = df_PCA[['PC1', 'PC2']] 
-    y_pca = df_PCA['produtividade'] 
-    # Divisão temporal (como fizemos antes) 
-    X_pca_train, X_pca_test, y_pca_train, y_pca_test = train_test_split(X_pca, 
-    y_pca, test_size=0.2, shuffle=False) 
-    # Modelo linear simples com PCA 
-    modelo_pca = LinearRegression() 
-    modelo_pca.fit(X_pca_train, y_pca_train) 
-    # Previsão 
-    y_pred_pca = modelo_pca.predict(X_pca_test) 
-    # Avaliação 
-    rmse_pca = mean_squared_error(y_pca_test, y_pred_pca) ** 0.5 
-    r2_pca = r2_score(y_pca_test, y_pred_pca) 
-    print(f"[PCA + Regressão linear] RMSE: {rmse_pca:.2f} | R²: {r2_pca:.2%}")
-    
-    # Modelo com Ridge sobre PCA 
-    lambda_regressao = 1 # testar vários valores para lambda 
-    modelo_pca_ridge = Ridge(alpha=lambda_regressao) 
-    modelo_pca_ridge.fit(X_pca_train, y_pca_train) 
-    # Previsão 
-    y_pred_pca_ridge = modelo_pca_ridge.predict(X_pca_test) 
-    # Avaliação 
-    rmse_pca_ridge = mean_squared_error(y_pca_test, y_pred_pca_ridge) ** 0.5 
-    r2_pca_ridge = r2_score(y_pca_test, y_pred_pca_ridge) 
-    print(f"[PCA + Regularização Ridge (L²) | λ = {lambda_regressao}] RMSE: {rmse_pca_ridge:.2f} | R²: {r2_pca_ridge:.2%}")
-
-def visualizar_comparacao_lambda():
-    """Visualiza a comparação do RMSE em função de λ"""
-    # Simulação dos dados para plotagem 
-    lambdas = [0.1, 1, 10, 100, 1000, 10000, 30000, 100000, 300000, 1000000] 
-    rmse_sem_pca = [71.19, 68.30, 54.97, 34.91, 26.38, 25.61, 25.56, 25.55, 
-    25.54, 25.54]   
-    rmse_com_pca = [43.25, 42.98, 40.61, 31.20, 25.97, 25.57, 25.55, 25.54, 
-    25.54, 25.54]   
-    
-    plt.plot(lambdas, rmse_sem_pca, marker='o', label='Sem PCA') 
-    plt.plot(lambdas, rmse_com_pca, marker='s', label='Com PCA') 
-    plt.xscale('log') 
-    plt.xlabel("λ (log scale)") 
-    plt.ylabel("RMSE") 
-    plt.title("Comparação do RMSE em função de λ (Ridge)") 
-    plt.grid(True) 
-    plt.legend() 
-    plt.tight_layout() 
-    plt.show()
-
-def plot_modelos_para_variavel(x_var, X, y, scaler, pca_model, modelo_linear, 
-modelo_ridge, modelo_pca, modelo_pca_ridge): 
-    x_index = X.columns.get_loc(x_var) 
-    x_vals = np.linspace(X[x_var].min(), X[x_var].max(), 100) 
-    X_mean = X.mean().to_numpy() 
-    X_input = np.tile(X_mean, (100, 1)) 
-    X_input[:, x_index] = x_vals 
-    X_input_df = pd.DataFrame(X_input, columns=X.columns) # ⬅ usa os mesmos nomes 
-    X_input_scaled = scaler.transform(X_input_df) 
-    X_input_pca = pca_model.transform(X_input_scaled) 
-    y_linear = modelo_linear.predict(X_input_scaled) 
-    y_ridge = modelo_ridge.predict(X_input_scaled) 
-    y_pca = modelo_pca.predict(X_input_pca) 
-    y_pca_ridge = modelo_pca_ridge.predict(X_input_pca) 
-    plt.figure(figsize=(10, 6)) 
-    sns.scatterplot(x=X[x_var], y=y, color='red', label='Dados reais', s=50, 
-    edgecolor='black') 
-    plt.plot(x_vals, y_linear, label='Linear', linestyle='-', color='blue') 
-    plt.plot(x_vals, y_ridge, label='Ridge (λ=1.000.000)', linestyle='--', 
-    color='orange') 
-    plt.plot(x_vals, y_pca, label='PCA + Linear', linestyle='-.', 
-    color='green') 
-    plt.plot(x_vals, y_pca_ridge, label='PCA + Ridge (λ=100.000)', 
-    linestyle=':', color='purple') 
-    plt.xlabel(x_var) 
-    plt.ylabel('Produtividade (kg/ha)') 
-    plt.title(f'Comparação de modelos — {x_var}') 
-    plt.legend() 
-    plt.grid(True) 
-    plt.tight_layout() 
-    plt.show()
-
-def preparar_e_visualizar_modelos():
-    """Prepara dados e visualiza comparação de modelos"""
-    global X, y, scaler, X_scaled, pca_model, X_pca, df_pca
-    global modelo_linear, modelo_ridge, modelo_pca, modelo_pca_ridge
-    
-    # 1. Reconstrução de X e y 
-    X = df[[ 
-    'chuva_flor', 'chuva_colheita', 'chuva_total', 
-    'anomalia_flor', 'temp_flor', 'umid_flor', 'chuva_relativa' 
-    ]] 
-    y = df['produtividade'] 
-    # 2. Padronização 
-    scaler = StandardScaler() 
-    X_scaled = scaler.fit_transform(X) 
-    # 3. PCA 
-    pca_model = PCA(n_components=2) 
-    X_pca = pca_model.fit_transform(X_scaled) 
-    # Converte o array PCA em DataFrame com nomes 
-    df_pca = pd.DataFrame(X_pca, columns=['PC1', 'PC2'], index=df.index) 
-    df[['PC1', 'PC2']] = df_pca 
-    # 4. Modelos treinados separadamente 
-    modelo_linear = LinearRegression().fit(X_scaled, y) 
-    modelo_ridge = Ridge(alpha=1e6).fit(X_scaled, y) 
-    modelo_pca = LinearRegression().fit(X_pca, y) 
-    modelo_pca_ridge = Ridge(alpha=1e5).fit(X_pca, y) 
-    
-    plot_modelos_para_variavel('temp_flor', X, y, scaler, pca_model, 
-    modelo_linear, modelo_ridge, modelo_pca, modelo_pca_ridge)
-
-#### Curva 1D da função custo 
-def plot_funcao_custo_1D(x_var, X, y, intervalo=(-200, 200), pontos=200): 
-# """ Plota a função de custo J(θ₁) para uma regressão univariada com a 
-# variável x_var. """ 
-    x = X[x_var].values 
-    y = y.values
-    m = len(y) 
-# Centraliza x para eliminar o intercepto implicitamente 
-    x_centralizado = x - x.mean() 
-    theta1_vals = np.linspace(intervalo[0], intervalo[1], pontos) 
-    custos = [(1 / (2 * m)) * np.sum((theta1 * x_centralizado - y) ** 2) for 
-    theta1 in theta1_vals] 
-    plt.figure(figsize=(8, 5)) 
-    plt.plot(theta1_vals, custos) 
-    plt.xlabel("θ₁") 
-    plt.ylabel("J(θ₁)") 
-    plt.title(f"Função de Custo - {x_var} (x centralizado)") 
-    plt.grid(True) 
-    plt.tight_layout() 
-    plt.show()
-
-def plot_funcao_custo_2D(x_vars, X, y, range_theta=(-200, 200), pontos=100): 
-# Plota a superfície da função de custo J(θ₁, θ₂) para duas variáveis. 
-    x1 = X[x_vars[0]].values 
-    x2 = X[x_vars[1]].values 
-    y = y.values 
-    m = len(y) 
-# Matriz de entrada com intercepto 
-    X_mat = np.vstack([np.ones(m), x1, x2]).T 
-# Geração de grid de θ₁ e θ₂ (intercepto θ₀ fixado em 0 para simplificação) 
-    theta1_vals = np.linspace(range_theta[0], range_theta[1], pontos) 
-    theta2_vals = np.linspace(range_theta[0], range_theta[1], pontos) 
-    J_vals = np.zeros((pontos, pontos)) 
-    for i in range(pontos): 
-        for j in range(pontos): 
-            theta = np.array([0, theta1_vals[i], theta2_vals[j]]) # θ₀ = 0 
-            h = X_mat @ theta 
-            J_vals[j, i] = (1 / (2 * m)) * np.sum((h - y) ** 2) 
-# Superfície 
-    T1, T2 = np.meshgrid(theta1_vals, theta2_vals) 
-    fig = plt.figure(figsize=(10, 6)) 
-    ax = fig.add_subplot(111, projection='3d') 
-    ax.plot_surface(T1, T2, J_vals, cmap='viridis', edgecolor='none', 
-    alpha=0.9) 
-    ax.set_xlabel(f"θ₁ ({x_vars[0]})") 
-    ax.set_ylabel(f"θ₂ ({x_vars[1]})") 
-    ax.set_zlabel("J(θ)") 
-    ax.set_title(f"Superfície da Função de Custo — {x_vars[0]} e {x_vars[1]}") 
-# plt.tight_layout() 
-    fig.subplots_adjust(right=0.5) 
-    plt.show()
-
-def plot_funcao_custo_2D_PCA(X_pca, y, range_theta=(-200, 200), pontos=100):
-    pc1 = X_pca[:, 0] 
-    pc2 = X_pca[:, 1] 
-    m = len(y) 
-# Matriz de entrada com intercepto 
-    X_mat = np.vstack([np.ones(m), pc1, pc2]).T 
-# Grid de valores de θ₁ e θ₂ 
-    theta1_vals = np.linspace(range_theta[0], range_theta[1], pontos) 
-    theta2_vals = np.linspace(range_theta[0], range_theta[1], pontos) 
-    J_vals = np.zeros((pontos, pontos)) 
-    for i in range(pontos): 
-        for j in range(pontos): 
-            theta = np.array([0, theta1_vals[i], theta2_vals[j]]) 
-            h = X_mat @ theta 
-            J_vals[j, i] = (1 / (2 * m)) * np.sum((h - y) ** 2) 
-# Superfície 3D 
-    T1, T2 = np.meshgrid(theta1_vals, theta2_vals) 
-    fig = plt.figure(figsize=(10, 6)) 
-    ax = fig.add_subplot(111, projection='3d') 
-    ax.plot_surface(T1, T2, J_vals, cmap='viridis', edgecolor='none', alpha=0.9) 
-    ax.set_xlabel("θ₁ (PC1)") 
-    ax.set_ylabel("θ₂ (PC2)") 
-    ax.set_zlabel("J(θ)") 
-    ax.set_title("Superfície da Função de Custo — Componentes Principais (PCA)") 
-    fig.subplots_adjust(right=0.85) 
-    plt.show()
-
-def plot_residuos(y_true, y_pred, titulo): 
-    residuos = y_true - y_pred 
-    plt.figure(figsize=(8, 4)) 
-    plt.scatter(y_pred, residuos, color='royalblue', alpha=0.7) 
-    plt.axhline(0, color='red', linestyle='--') 
-    plt.xlabel("Previsão") 
-    plt.ylabel("Resíduo") 
-    plt.title(f"Resíduos — {titulo}") 
-    plt.grid(True) 
-    plt.tight_layout() 
-    plt.show() 
-    print("\n")
-
-def visualizar_residuos():
-    """Visualiza os resíduos de todos os modelos"""
-    global y_pred_linear, y_pred_ridge, y_pred_pca, y_pred_pca_ridge
-    
-    # Previsões 
-    y_pred_linear = modelo_linear.predict(X_scaled) 
-    y_pred_ridge = modelo_ridge.predict(X_scaled) 
-    y_pred_pca = modelo_pca.predict(X_pca) 
-    y_pred_pca_ridge = modelo_pca_ridge.predict(X_pca) 
-    # Gráficos de resíduos 
-    plot_residuos(y, y_pred_linear, "Regressão Linear") 
-    plot_residuos(y, y_pred_ridge, "Regressão Regularizada (λ = 1.000.000)") 
-    plot_residuos(y, y_pred_pca, "PCA + Regressão Linear") 
-    plot_residuos(y, y_pred_pca_ridge, "PCA + Regularizada (λ = 100.000)")
-
-def preparar_dados_classificacao():
-    """Prepara os dados para modelos de classificação"""
-    global X_class, y_class, scaler_class, X_class_scaled, pca_class, X_class_pca
-    global X_train_class, X_test_class, y_train_class, y_test_class
-    global X_train_pca, X_test_pca
-    
-    # 1. Mapeia a variável alvo (safra)
-    mapa_safra = {'baixa': 0, 'media': 1, 'alta': 2}
-    df['safra_num'] = df['safra'].map(mapa_safra)
-
-    # 2. Define variáveis preditoras (mesmas da regressão)
-    X_class = df[['chuva_flor', 'chuva_colheita', 'chuva_total', 'anomalia_flor',
-                 'temp_flor', 'umid_flor', 'chuva_relativa']]
-    y_class = df['safra_num'].fillna(1)  # Substitui NaN por 1 (media) 
-
-    # 3. Padronização 
-    scaler_class = StandardScaler() 
-    X_class_scaled = scaler_class.fit_transform(X_class) 
-    # 4. PCA (opcional — será usado para um dos modelos) 
-    pca_class = PCA(n_components=2) 
-    X_class_pca = pca_class.fit_transform(X_class_scaled) 
-    # 5. Divisão treino/teste 
-    X_train_class, X_test_class, y_train_class, y_test_class = train_test_split(X_class_scaled, y_class, test_size=0.3, random_state=42,stratify=y_class) 
-    X_train_pca, X_test_pca, _, _ = train_test_split(X_class_pca, y_class, test_size=0.3, random_state=42, stratify=y_class)
-    
-    print("Dados preparados para classificação!")
-    print(f"Classes: {mapa_safra}")
-    print(f"Distribuição das classes: \n{y_class.value_counts().sort_index()}")
-
-def treinar_modelos_classificacao():
-    """Treina os modelos de classificação"""
-    global modelo_classico, modelo_pca_class
-    
-    # 1. Modelo com variáveis originais 
-    modelo_classico = OneVsRestClassifier(LogisticRegression(max_iter=1000)) 
-    modelo_classico.fit(X_train_class, y_train_class) 
-    # 2. Modelo com PCA 
-    modelo_pca_class = OneVsRestClassifier(LogisticRegression(max_iter=1000)) 
-    modelo_pca_class.fit(X_train_pca, y_train_class)
-    
-    print("Modelos de classificação treinados!")
-
-def plotar_curva_roc_multiclasse(y_true, y_score, classes, titulo="Modelo"): 
-    y_bin = label_binarize(y_true, classes=classes) 
-    n_classes = y_bin.shape[1] 
-    fpr, tpr, roc_auc = {}, {}, {} 
-    for i in range(n_classes):
-        fpr[i], tpr[i], _ = roc_curve(y_bin[:, i], y_score[:, i]) 
-        roc_auc[i] = auc(fpr[i], tpr[i]) 
-    fpr["micro"], tpr["micro"], _ = roc_curve(y_bin.ravel(), y_score.ravel()) 
-    roc_auc["micro"] = auc(fpr["micro"], tpr["micro"])
-    # Plot 
-    plt.figure(figsize=(8, 6)) 
-    colors = cycle(['#1f77b4', '#ff7f0e', '#2ca02c'])   
-    for i, color in zip(range(n_classes), colors): 
-        plt.plot(fpr[i], tpr[i], color=color, lw=2, label=f'Classe {i} (AUC = {roc_auc[i]:.2f})')
-    plt.plot(fpr["micro"], tpr["micro"], color='black', linestyle='--', 
-    label=f"Média micro (AUC = {roc_auc['micro']:.2f})") 
-    plt.plot([0, 1], [0, 1], 'k--', lw=1) 
-    plt.xlabel("Taxa de Falsos Positivos (FPR)") 
-    plt.ylabel("Taxa de Verdadeiros Positivos (TPR)") 
-    plt.title(f"Curva ROC Multiclasse — {titulo}") 
-    plt.legend(loc="lower right") 
-    plt.grid(True) 
-    plt.tight_layout() 
-    plt.show()
-
-# Função de avaliação completa 
-def avaliar_modelo_classificacao(nome, y_true, y_pred, y_prob=None, classes=[0, 1, 2]): 
-    # Matriz de confusão 
-    cm = confusion_matrix(y_true, y_pred)  
-    plt.figure(figsize=(5, 4)) 
-    sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", xticklabels=['Baixa', 
-    'Média', 'Alta'], yticklabels=['Baixa', 'Média', 'Alta']) 
-    plt.xlabel("Predito") 
-    plt.ylabel("Real") 
-    plt.title(f"Matriz de Confusão — {nome}", pad=12) 
-    plt.tight_layout() 
-    plt.show() 
-    # Métricas textuais 
-    print(f"\nAvaliação — {nome}") 
-    print("Acurácia:", accuracy_score(y_true, y_pred)) 
-    print("F1-score (macro):", f1_score(y_true, y_pred, average='macro')) 
-    print("\nRelatório de Classificação:") 
-    print(classification_report(y_true, y_pred, target_names=['Baixa', 
-    'Média', 'Alta'], zero_division=0))
-    # Curva ROC (opcional) 
-    if y_prob is not None: 
-        plotar_curva_roc_multiclasse(y_true, y_prob, classes, titulo=nome)
-
-def avaliar_modelos_classificacao():
-    """Avalia os modelos de classificação"""
-    # Previsões e probabilidades 
-    y_pred_classico = modelo_classico.predict(X_test_class) 
-    y_prob_classico = modelo_classico.predict_proba(X_test_class) 
-    # Avaliação completa 
-    avaliar_modelo_classificacao("Modelo Sem PCA", y_test_class, y_pred_classico, y_prob_classico)
-    
-    # Previsões e probabilidades com PCA
-    y_pred_pca = modelo_pca_class.predict(X_test_pca)
-    y_prob_pca = modelo_pca_class.predict_proba(X_test_pca)
-    # Avaliação completa
-    avaliar_modelo_classificacao("Modelo com PCA", y_test_class, y_pred_pca, y_prob_pca)
-
-def plot_fronteira_decisao_2D(X_pca, y_true, modelo, titulo="Fronteiras de Decisão (PCA)"):
-    h = 0.02 # Passo da malha
-    
-    # Geração da malha de pontos
-    x_min, x_max = X_pca[:, 0].min() - 1, X_pca[:, 0].max() + 1
-    y_min, y_max = X_pca[:, 1].min() - 1, X_pca[:, 1].max() + 1
-    xx, yy = np.meshgrid(np.arange(x_min, x_max, h), np.arange(y_min, y_max, h))   
-    # Predição sobre a malha
-    Z = modelo.predict(np.c_[xx.ravel(), yy.ravel()])
-    Z = Z.reshape(xx.shape)
-    # Paleta de cores
-    cmap_light = ListedColormap(['#FFAAAA', '#AAFFAA', '#AAAAFF'])
-    cmap_bold = ['red', 'green', 'blue']
-    # Gráfico
-    plt.figure(figsize=(8, 6))
-    plt.contourf(xx, yy, Z, cmap=cmap_light, alpha=0.5)
-    scatter = plt.scatter(X_pca[:, 0], X_pca[:, 1], c=y_true,
-    cmap=ListedColormap(cmap_bold), edgecolor='k', s=60)
-    plt.xlabel("PC1")
-    plt.ylabel("PC2")
-    plt.title(titulo)
-    plt.legend(handles=scatter.legend_elements()[0], labels=['Baixa','Média', 'Alta'])
-    plt.grid(True)
-    plt.tight_layout()
-    plt.show()
-
-def visualizar_fronteiras_decisao():
-    """Visualiza as fronteiras de decisão do modelo com PCA"""
-    plot_fronteira_decisao_2D(X_class_pca, y_class, modelo_pca_class,
-    titulo="Fronteiras de Decisão — PCA + Regressão Logística")
-
-def aprendizado_por_reforco():
-    """Executa o algoritmo de aprendizado por reforço Q-learning"""
-    print("\n=== APRENDIZADO POR REFORÇO (Q-LEARNING) ===\n")
-    
-    # Parâmetros
-    alpha = 0.9 # taxa de aprendizado
-    gamma = 0.9 # fator de desconto
-    epsilon = 0.9 # chance de explorar
-
-    # Inicializa a Tabela Q
-    q_table = {
-    'muito_seco': {'muita_agua': 0.0, 'regar': 0.0, 'pouca_agua': 0.0, 'nao_regar': 0.0},
-    'seco': {'muita_agua': 0.0, 'regar': 0.0, 'pouca_agua': 0.0, 'nao_regar': 0.0},
-    'ideal': {'muita_agua': 0.0, 'regar': 0.0, 'pouca_agua': 0.0, 'nao_regar': 0.0},
-    'encharcado': {'muita_agua': 0.0, 'regar': 0.0, 'pouca_agua': 0.0, 'nao_regar': 0.0},
-    }
-
-    # Função de transição: próximo estado baseado em estado atual e ação
-    def transicao(estado, acao):
-        if estado == 'muito_seco':
-            if acao == 'pouca_agua': return 'muito_seco'
-            elif acao == 'regar': return 'seco'
-            elif acao == 'muita_agua': return 'ideal'
-            else: return 'muito_seco'
-        elif estado == 'seco':
-            if acao == 'regar': return 'ideal'
-            elif acao == 'pouca_agua': return 'seco'
-            elif acao == 'muita_agua': return 'encharcado'
-            else: return 'seco'
-        elif estado == 'ideal':
-            if acao == 'regar': return 'encharcado'
-            elif acao == 'pouca_agua': return 'ideal'
-            elif acao == 'muita_agua': return 'encharcado'
-            else: return 'seco'
-        elif estado == 'encharcado':
-            if acao == 'regar': return 'encharcado'
-            elif acao == 'pouca_agua': return 'ideal'
-            elif acao == 'muita_agua': return 'encharcado'
-            else: return 'ideal'
-
-    # x12= input("digite o modo 'extremo' ou 'padrao'")
-    def recompensa(estado, acao, modo= 'extremo'):
-        # Tabela de recompensas para o modo padrão
-        padrao = {
-            'muito_seco': {
-                'regar': 3,
-                'pouca_agua': 1,
-                'nao_regar': -1,
-                'muita_agua': 5
-            },
-
-            'seco': {
-                'regar': 5,
-                'pouca_agua': 2,
-                'nao_regar': -1,
-                'muita_agua': -3
-            },
-            'ideal': {
-                'nao_regar': 5,
-                'pouca_agua': 2,
-                'regar': -3,
-                'muita_agua': -5
-            },
-            'encharcado': {
-                'nao_regar': 2,
-                'pouca_agua': -1,
-                'regar': -3,
-                'muita_agua': -5
-            }
-        }
-
-        # Tabela de recompensas para o modo extremo
-        extremo = {
-            'muito_seco': {
-                'regar': 6,
-                'pouca_agua': 0,
-                'nao_regar': -3,
-                'muita_agua': 8
-            },
-
-            'seco': {
-                'regar': 8,
-                'pouca_agua': 5,
-                'nao_regar': -4,
-                'muita_agua': -6
-            },
-            'ideal': {
-                'nao_regar': -2,
-                'pouca_agua': 4,
-                'regar': 7,
-                'muita_agua': -4
-            },
-            'encharcado': {
-                'nao_regar': -4,
-                'pouca_agua': -2,
-                'regar': 3,
-                'muita_agua': -6
-            }
-        }
-
-        # Seleciona a tabela certa com base no modo
-        tabelas = {
-            'padrao': padrao,
-            'extremo': extremo
-        }
-
-        if modo not in tabelas:
-            raise ValueError("Modo inválido. Use 'padrao' ou 'extremo'.")
-
-        return tabelas[modo][estado].get(acao, -10)  # Penalidade extra se ação inválida
-
-    # Registro para exibir evolução
-    historico = []
-
-    # Episódios de simulação
-    for episodio in range(1, 999):
-        estado = random.choice(['muito_seco','seco', 'ideal', 'encharcado'])
-        for passo in range(1): # Um passo por episódio (simplificação)
-            if random.random() < epsilon:
-                acao = random.choice(['muita_agua','regar', 'pouca_agua', 'nao_regar'])
-            else:
-                acao = max(q_table[estado], key=q_table[estado].get)
-            prox_estado = transicao(estado, acao)
-            r = recompensa(estado, acao)
-
-            max_q_prox = max(q_table[prox_estado].values())
-            q_atual = q_table[estado][acao]
-            q_novo = q_atual + alpha * (r + gamma * max_q_prox - q_atual)
-            q_table[estado][acao] = q_novo
-
-            historico.append({
-                'Episódio': episodio,
-                'Estado': estado,
-                'Ação': acao,
-                'Recompensa': r,
-                'Próximo estado': prox_estado,
-                'Q(s,a)': round(q_novo, 2)
-            })
-            estado = prox_estado # avança para o próximo estado
-
-    # Mostra a tabela final de Q-values
-    q_df = pd.DataFrame(q_table).T
-    print("\nTabela final de Q-values:")
-    print(q_df)
-    # Mostra histórico das decisões
-    historico_df = pd.DataFrame(historico)
-    print("\nÚltimas 10 decisões do histórico:")
-    display(historico_df.tail(10))
-
-def visualizacoes_regressao():
-    """Menu para visualizações dos modelos de regressão"""
-    print("\n=== VISUALIZAÇÕES DE REGRESSÃO ===\n")
-    
-    opcoes = {
-        '1': 'Scree Plot (Análise de Componentes Principais)',
-        '2': 'Comparação RMSE vs Lambda',
-        '3': 'Comparação de Modelos (temp_flor)',
-        '4': 'Função de Custo 1D',
-        '5': 'Função de Custo 2D',
-        '6': 'Função de Custo 2D com PCA',
-        '7': 'Gráficos de Resíduos'
-    }
-    
-    print("Escolha uma visualização:")
-    for key, desc in opcoes.items():
-        print(f"{key}. {desc}")
-    print("0. Voltar ao menu principal")
-    
-    escolha = input("\nDigite sua escolha: ")
-    
-    if escolha == '0':
-        return
-    elif escolha == '1':
-        screeplot()
-    elif escolha == '2':
-        visualizar_comparacao_lambda()
-    elif escolha == '3':
-        preparar_e_visualizar_modelos()
-    elif escolha == '4':
-        plot_funcao_custo_1D('temp_flor', X, y)
-    elif escolha == '5':
-        plot_funcao_custo_2D(['temp_flor', 'chuva_flor'], X, y)
-    elif escolha == '6':
-        plot_funcao_custo_2D_PCA(X_pca, y)
-    elif escolha == '7':
-        visualizar_residuos()
-    else:
-        print("Opção inválida!")
-
-def executar_pipeline_completo():
-    """Executa todo o pipeline de análise"""
-    print("\n=== EXECUTANDO PIPELINE COMPLETO ===\n")
-    
-    print("1. Carregando dados...")
-    carregar_dados()
-    
-    print("\n2. Criando variáveis adicionais...")
-    criar_variaveis_adicionais()
-    
-    print("\n3. Preparando dados para regressão...")
-    preparar_dados_regressao()
-    
-    print("\n4. Análise de componentes principais...")
-    screeplot()
-    
-    print("\n5. Treinando modelos de regressão...")
-    treinar_modelos_regressao()
-    
-    print("\n6. Preparando visualizações de modelos...")
-    preparar_e_visualizar_modelos()
-    
-    print("\n7. Preparando dados para classificação...")
-    preparar_dados_classificacao()
-    
-    print("\n8. Treinando modelos de classificação...")
-    treinar_modelos_classificacao()
-    
-    print("\n9. Avaliando modelos de classificação...")
-    avaliar_modelos_classificacao()
-    
-    print("\n10. Visualizando fronteiras de decisão...")
-    visualizar_fronteiras_decisao()
-    
-    print("\n11. Executando aprendizado por reforço...")
-    aprendizado_por_reforco()
-    
-    print("\n=== PIPELINE COMPLETO EXECUTADO COM SUCESSO! ===")
-
-def menu_principal():
-    """Menu principal do sistema"""
-    while True:
-        print("\n" + "="*50)
-        print("SISTEMA DE ANÁLISE DE SAFRA COM APRENDIZADO POR REFORÇO")
-        print("="*50)
-        print("\nMENU PRINCIPAL:")
-        print("1. Carregar e preparar dados")
-        print("2. Análise exploratória de dados")
-        print("3. Modelos de regressão")
-        print("4. Modelos de classificação")
-        print("5. Aprendizado por reforço (Q-Learning)")
-        print("6. Visualizações de regressão")
-        print("7. Executar pipeline completo")
-        print("0. Sair")
+class SafraAnalysisGUI:
+    def __init__(self):
+        self.root = ctk.CTk()
+        self.root.title("Sistema de Análise de Safra com Aprendizado por Reforço")
+        self.root.geometry("1400x800")
         
-        escolha = input("\nDigite sua escolha: ")
+        # Variáveis globais do sistema original
+        self.df = None
+        self.X = None
+        self.y = None
+        self.X_scaled = None
+        self.X_pca = None
+        self.df_PCA = None
+        self.scaler = None
+        self.pca_model = None
+        self.modelo_linear = None
+        self.modelo_ridge = None
+        self.modelo_pca = None
+        self.modelo_pca_ridge = None
+        self.X_class = None
+        self.y_class = None
+        self.X_class_scaled = None
+        self.X_class_pca = None
+        self.modelo_classico = None
+        self.modelo_pca_class = None
+        self.preprocessador = None
+        self.colunas_numericas = None
+        self.colunas_binarias = None
+        self.X_train = None
+        self.X_test = None
+        self.y_train = None
+        self.y_test = None
+        self.X_padronizado = None
+        self.pca_full = None
+        self.pca = None
+        self.pipeline_original = None
+        self.pipeline_ridge = None
+        self.X_pca_train = None
+        self.X_pca_test = None
+        self.y_pca_train = None
+        self.y_pca_test = None
+        self.y_pred_orig = None
+        self.y_pred_ridge = None
+        self.y_pred_pca = None
+        self.y_pred_pca_ridge = None
+        self.scaler_class = None
+        self.pca_class = None
+        self.X_train_class = None
+        self.X_test_class = None
+        self.y_train_class = None
+        self.y_test_class = None
+        self.X_train_pca = None
+        self.X_test_pca = None
         
-        if escolha == '0':
-            print("\nEncerrando o programa...")
-            break
-        elif escolha == '1':
-            carregar_dados()
-            criar_variaveis_adicionais()
-        elif escolha == '2':
-            if df is None:
-                print("\nPor favor, carregue os dados primeiro (opção 1)")
-            else:
-                analise_exploratoria()
-        elif escolha == '3':
-            if df is None:
-                print("\nPor favor, carregue os dados primeiro (opção 1)")
-            else:
-                print("\n=== MODELOS DE REGRESSÃO ===")
-                print("1. Preparar dados")
-                print("2. Treinar modelos")
-                print("3. Visualizar resultados")
-                sub_escolha = input("\nDigite sua escolha: ")
-                if sub_escolha == '1':
-                    preparar_dados_regressao()
-                    screeplot()
-                elif sub_escolha == '2':
-                    if X is None:
-                        print("\nPor favor, prepare os dados primeiro")
-                    else:
-                        treinar_modelos_regressao()
-                        preparar_e_visualizar_modelos()
-                elif sub_escolha == '3':
-                    if modelo_linear is None:
-                        print("\nPor favor, treine os modelos primeiro")
-                    else:
-                        visualizacoes_regressao()
-        elif escolha == '4':
-            if df is None:
-                print("\nPor favor, carregue os dados primeiro (opção 1)")
-            else:
-                print("\n=== MODELOS DE CLASSIFICAÇÃO ===")
-                print("1. Preparar dados")
-                print("2. Treinar modelos")
-                print("3. Avaliar modelos")
-                print("4. Visualizar fronteiras de decisão")
-                sub_escolha = input("\nDigite sua escolha: ")
-                if sub_escolha == '1':
-                    preparar_dados_classificacao()
-                elif sub_escolha == '2':
-                    if X_class is None:
-                        print("\nPor favor, prepare os dados primeiro")
-                    else:
-                        treinar_modelos_classificacao()
-                elif sub_escolha == '3':
-                    if modelo_classico is None:
-                        print("\nPor favor, treine os modelos primeiro")
-                    else:
-                        avaliar_modelos_classificacao()
-                elif sub_escolha == '4':
-                    if modelo_pca_class is None:
-                        print("\nPor favor, treine os modelos primeiro")
-                    else:
-                        visualizar_fronteiras_decisao()
-        elif escolha == '5':
-            aprendizado_por_reforco()
-        elif escolha == '6':
-            if df is None or modelo_linear is None:
-                print("\nPor favor, carregue os dados e treine os modelos de regressão primeiro")
-            else:
-                visualizacoes_regressao()
-        elif escolha == '7':
-            executar_pipeline_completo()
-        else:
-            print("\nOpção inválida! Tente novamente.")
+        # Controle de gráficos
+        self.plots = []
+        self.current_plot_index = -1
+        
+        self.setup_ui()
+        
+    def setup_ui(self):
+        # Frame principal com grid
+        self.main_frame = ctk.CTkFrame(self.root)
+        self.main_frame.pack(fill="both", expand=True, padx=10, pady=10)
+        
+        # Configurar grid
+        self.main_frame.grid_columnconfigure(0, weight=1)
+        self.main_frame.grid_columnconfigure(1, weight=3)
+        self.main_frame.grid_rowconfigure(0, weight=1)
+        
+        # Painel lateral esquerdo
+        self.setup_sidebar()
+        
+        # Área principal direita
+        self.setup_main_area()
+        
+    def setup_sidebar(self):
+        # Frame do sidebar
+        self.sidebar = ctk.CTkFrame(self.main_frame, width=300)
+        self.sidebar.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
+        
+        # Título
+        title_label = ctk.CTkLabel(
+            self.sidebar, 
+            text="Sistema de Análise de Safra",
+            font=ctk.CTkFont(size=20, weight="bold")
+        )
+        title_label.pack(pady=20)
+        
+        # Seção de Dados
+        data_frame = ctk.CTkFrame(self.sidebar)
+        data_frame.pack(fill="x", padx=10, pady=10)
+        
+        data_label = ctk.CTkLabel(data_frame, text="Dados", font=ctk.CTkFont(size=16, weight="bold"))
+        data_label.pack(pady=5)
+        
+        self.load_data_btn = ctk.CTkButton(
+            data_frame, 
+            text="Carregar Dados", 
+            command=self.load_data_thread,
+            height=35
+        )
+        self.load_data_btn.pack(fill="x", padx=10, pady=5)
+        
+        self.create_vars_btn = ctk.CTkButton(
+            data_frame, 
+            text="Criar Variáveis Adicionais", 
+            command=self.create_additional_vars,
+            state="disabled",
+            height=35
+        )
+        self.create_vars_btn.pack(fill="x", padx=10, pady=5)
+        
+        # Seção de EDA
+        eda_frame = ctk.CTkFrame(self.sidebar)
+        eda_frame.pack(fill="x", padx=10, pady=10)
+        
+        eda_label = ctk.CTkLabel(eda_frame, text="Análise Exploratória", font=ctk.CTkFont(size=16, weight="bold"))
+        eda_label.pack(pady=5)
+        
+        self.eda_options = ctk.CTkComboBox(
+            eda_frame,
+            values=[
+                "Boxplot: ENSO × Produtividade",
+                "Scatter: Temperatura × Produtividade",
+                "Histograma de Variáveis",
+                "Heatmap de Correlação",
+                "Pairplot",
+                "Scree Plot (PCA)",
+                "Visualização PCA 2D",
+                "Função de Custo 1D",
+                "Função de Custo 2D",
+                "Função de Custo 2D (PCA)",
+                "Gráficos de Resíduos",
+                "Fronteiras de Decisão (PCA)"
+            ],
+            state="readonly",
+            width=250
+        )
+        self.eda_options.pack(padx=10, pady=5)
+        
+        self.eda_btn = ctk.CTkButton(
+            eda_frame, 
+            text="Visualizar", 
+            command=self.run_eda,
+            state="disabled",
+            height=35
+        )
+        self.eda_btn.pack(fill="x", padx=10, pady=5)
+        
+        # Seção de Modelos
+        models_frame = ctk.CTkFrame(self.sidebar)
+        models_frame.pack(fill="x", padx=10, pady=10)
+        
+        models_label = ctk.CTkLabel(models_frame, text="Modelos", font=ctk.CTkFont(size=16, weight="bold"))
+        models_label.pack(pady=5)
+        
+        self.prep_regression_btn = ctk.CTkButton(
+            models_frame, 
+            text="Preparar Regressão", 
+            command=self.prepare_regression,
+            state="disabled",
+            height=35
+        )
+        self.prep_regression_btn.pack(fill="x", padx=10, pady=5)
+        
+        self.train_regression_btn = ctk.CTkButton(
+            models_frame, 
+            text="Treinar Regressão", 
+            command=self.train_regression,
+            state="disabled",
+            height=35
+        )
+        self.train_regression_btn.pack(fill="x", padx=10, pady=5)
+        
+        self.prep_classification_btn = ctk.CTkButton(
+            models_frame, 
+            text="Preparar Classificação", 
+            command=self.prepare_classification,
+            state="disabled",
+            height=35
+        )
+        self.prep_classification_btn.pack(fill="x", padx=10, pady=5)
+        
+        self.train_classification_btn = ctk.CTkButton(
+            models_frame, 
+            text="Treinar Classificação", 
+            command=self.train_classification,
+            state="disabled",
+            height=35
+        )
+        self.train_classification_btn.pack(fill="x", padx=10, pady=5)
+        
+        # Seção de Aprendizado por Reforço
+        rl_frame = ctk.CTkFrame(self.sidebar)
+        rl_frame.pack(fill="x", padx=10, pady=10)
+        
+        rl_label = ctk.CTkLabel(rl_frame, text="Aprendizado por Reforço", font=ctk.CTkFont(size=16, weight="bold"))
+        rl_label.pack(pady=5)
+        
+        self.rl_mode = ctk.CTkComboBox(
+            rl_frame,
+            values=["padrão", "extremo"],
+            state="readonly",
+            width=250
+        )
+        self.rl_mode.set("padrão")
+        self.rl_mode.pack(padx=10, pady=5)
 
-# Executa o menu principal quando o script é executado
+        # Adiciona combobox para seleção de episódios
+        self.rl_episodes = ctk.CTkComboBox(
+            rl_frame,
+            values=["51", "201", "999"],
+            state="readonly",
+            width=250
+        )
+        self.rl_episodes.set("201")
+        self.rl_episodes.pack(padx=10, pady=5)
+
+        # Adiciona combobox para seleção do epsilon
+        epsilon_label = ctk.CTkLabel(rl_frame, text="Taxa de Exploração (epsilon):", font=ctk.CTkFont(size=12))
+        epsilon_label.pack(padx=10, pady=(10,0))
+        
+        self.rl_epsilon = ctk.CTkComboBox(
+            rl_frame,
+            values=["0.0", "0.1", "0.5", "1.0"],
+            state="readonly",
+            width=250
+        )
+        self.rl_epsilon.set("0.9")
+        self.rl_epsilon.pack(padx=10, pady=5)
+        
+        self.rl_btn = ctk.CTkButton(
+            rl_frame, 
+            text="Executar Q-Learning", 
+            command=self.run_qlearning,
+            height=35
+        )
+        self.rl_btn.pack(fill="x", padx=10, pady=5)
+        
+        # Botão Pipeline Completo
+        self.pipeline_btn = ctk.CTkButton(
+            self.sidebar, 
+            text="Executar Pipeline Completo", 
+            command=self.run_complete_pipeline,
+            state="disabled",
+            height=40,
+            font=ctk.CTkFont(size=14, weight="bold")
+        )
+        self.pipeline_btn.pack(fill="x", padx=10, pady=20)
+        
+    def setup_main_area(self):
+        # Notebook para abas
+        self.notebook = ctk.CTkTabview(self.main_frame)
+        self.notebook.grid(row=0, column=1, sticky="nsew")
+        
+        # Aba de Console
+        self.console_tab = self.notebook.add("Console")
+        self.setup_console_tab()
+        
+        # Aba de Visualizações
+        self.viz_tab = self.notebook.add("Visualizações")
+        self.setup_viz_tab()
+        
+        # Aba de Resultados
+        self.results_tab = self.notebook.add("Resultados")
+        self.setup_results_tab()
+        
+        # Aba de Dados
+        self.data_tab = self.notebook.add("Dados")
+        self.setup_data_tab()
+        
+    def setup_console_tab(self):
+        # Frame para console
+        console_frame = ctk.CTkFrame(self.console_tab)
+        console_frame.pack(fill="both", expand=True, padx=10, pady=10)
+        
+        # Label
+        console_label = ctk.CTkLabel(console_frame, text="Console de Saída", font=ctk.CTkFont(size=14, weight="bold"))
+        console_label.pack(pady=5)
+        
+        # Text widget para console
+        self.console_text = ctk.CTkTextbox(console_frame, height=600, font=("Consolas", 12))
+        self.console_text.pack(fill="both", expand=True, padx=10, pady=10)
+        
+        # Botão para limpar console
+        clear_btn = ctk.CTkButton(console_frame, text="Limpar Console", command=self.clear_console)
+        clear_btn.pack(pady=5)
+        
+    def setup_viz_tab(self):
+        # Frame para visualizações
+        self.viz_frame = ctk.CTkFrame(self.viz_tab)
+        self.viz_frame.pack(fill="both", expand=True, padx=10, pady=10)
+        
+        # Label
+        viz_label = ctk.CTkLabel(self.viz_frame, text="Área de Visualizações", font=ctk.CTkFont(size=14, weight="bold"))
+        viz_label.pack(pady=5)
+        
+        # Frame para matplotlib
+        self.plot_frame = ctk.CTkFrame(self.viz_frame)
+        self.plot_frame.pack(fill="both", expand=True, padx=10, pady=10)
+        
+        # Frame para botões de navegação dos gráficos
+        self.nav_frame = ctk.CTkFrame(self.viz_frame)
+        self.nav_frame.pack(fill="x", padx=10, pady=(0,10))
+        
+        self.prev_btn = ctk.CTkButton(self.nav_frame, text="Anterior", command=self.show_prev_plot, state="disabled")
+        self.prev_btn.pack(side="left", padx=5)
+        
+        self.next_btn = ctk.CTkButton(self.nav_frame, text="Próximo", command=self.show_next_plot, state="disabled")
+        self.next_btn.pack(side="left", padx=5)
+        
+        self.clear_plots_btn = ctk.CTkButton(self.nav_frame, text="Limpar Gráficos", command=self.clear_plots)
+        self.clear_plots_btn.pack(side="right", padx=5)
+
+    def show_prev_plot(self):
+        if self.current_plot_index > 0:
+            self.current_plot_index -= 1
+            self.display_current_plot()
+
+    def show_next_plot(self):
+        if self.current_plot_index < len(self.plots) - 1:
+            self.current_plot_index += 1
+            self.display_current_plot()
+
+    def update_nav_buttons(self):
+        self.prev_btn.configure(state="normal" if self.current_plot_index > 0 else "disabled")
+        self.next_btn.configure(state="normal" if self.current_plot_index < len(self.plots) - 1 else "disabled")
+        
+    def setup_results_tab(self):
+        # Frame para resultados
+        results_frame = ctk.CTkFrame(self.results_tab)
+        results_frame.pack(fill="both", expand=True, padx=10, pady=10)
+        
+        # Label
+        results_label = ctk.CTkLabel(results_frame, text="Resultados dos Modelos", font=ctk.CTkFont(size=14, weight="bold"))
+        results_label.pack(pady=5)
+        
+        # Text widget para resultados
+        self.results_text = ctk.CTkTextbox(results_frame, height=600)
+        self.results_text.pack(fill="both", expand=True, padx=10, pady=10)
+        
+    def setup_data_tab(self):
+        # Frame para dados
+        data_frame = ctk.CTkFrame(self.data_tab)
+        data_frame.pack(fill="both", expand=True, padx=10, pady=10)
+        
+        # Label
+        data_label = ctk.CTkLabel(data_frame, text="Visualização dos Dados", font=ctk.CTkFont(size=14, weight="bold"))
+        data_label.pack(pady=5)
+        
+        # Frame para treeview
+        tree_frame = ctk.CTkFrame(data_frame)
+        tree_frame.pack(fill="both", expand=True, padx=10, pady=10)
+        
+        # Scrollbars
+        tree_scroll_y = ttk.Scrollbar(tree_frame)
+        tree_scroll_y.pack(side="right", fill="y")
+        
+        tree_scroll_x = ttk.Scrollbar(tree_frame, orient="horizontal")
+        tree_scroll_x.pack(side="bottom", fill="x")
+        
+        # Treeview
+        self.data_tree = ttk.Treeview(
+            tree_frame,
+            yscrollcommand=tree_scroll_y.set,
+            xscrollcommand=tree_scroll_x.set
+        )
+        self.data_tree.pack(fill="both", expand=True)
+        
+        tree_scroll_y.config(command=self.data_tree.yview)
+        tree_scroll_x.config(command=self.data_tree.xview)
+        
+    def log_to_console(self, message):
+        """Adiciona mensagem ao console de forma thread-safe"""
+        def append_message():
+            formatted_message = message.replace("    ", "\t")
+            self.console_text.insert("end", formatted_message + "\n")
+            self.console_text.see("end")
+        self.root.after(0, append_message)
+        
+    def clear_console(self):
+        """Limpa o console"""
+        self.console_text.delete("1.0", "end")
+        
+    def clear_plot(self):
+        """Limpa a área de plot"""
+        for widget in self.plot_frame.winfo_children():
+            widget.destroy()
+            
+    def clear_plots(self):
+        """Limpa todos os gráficos armazenados"""
+        self.plots = []
+        self.current_plot_index = -1
+        self.clear_plot()
+        self.update_nav_buttons()
+        self.log_to_console("Gráficos limpos com sucesso!")
+            
+    def show_plot(self, fig):
+        """Mostra um plot matplotlib na GUI e armazena na lista"""
+        # Adiciona à lista de plots
+        self.plots.append(fig)
+        self.current_plot_index = len(self.plots) - 1
+        
+        # Mostra o plot atual
+        self.display_current_plot()
+        
+        # Muda para aba de visualizações
+        self.notebook.set("Visualizações")
+        
+    def display_current_plot(self):
+        """Exibe o plot atual da lista"""
+        self.clear_plot()
+        
+        if 0 <= self.current_plot_index < len(self.plots):
+            canvas = FigureCanvasTkAgg(self.plots[self.current_plot_index], master=self.plot_frame)
+            canvas.draw()
+            canvas.get_tk_widget().pack(fill="both", expand=True, pady=10)
+        
+        # Atualiza estado dos botões de navegação
+        self.update_nav_buttons()
+            
+    def update_data_view(self):
+        """Atualiza a visualização dos dados"""
+        if self.df is None:
+            return
+            
+        # Limpa treeview
+        self.data_tree.delete(*self.data_tree.get_children())
+        
+        # Configura colunas
+        self.data_tree['columns'] = list(self.df.columns)
+        self.data_tree['show'] = 'tree headings'
+        
+        # Configura cabeçalhos
+        self.data_tree.heading("#0", text="Índice")
+        self.data_tree.column("#0", width=100)
+        
+        for col in self.df.columns:
+            self.data_tree.heading(col, text=col)
+            self.data_tree.column(col, width=100)
+            
+        # Adiciona dados
+        for idx, row in self.df.iterrows():
+            values = [str(val) for val in row.values]
+            self.data_tree.insert("", "end", text=str(idx), values=values)
+            
+    def load_data_thread(self):
+        """Carrega dados em thread separada"""
+        threading.Thread(target=self.load_data, daemon=True).start()
+        
+    def load_data(self):
+        """Carrega e prepara os dados iniciais"""
+        try:
+            self.log_to_console("Carregando dados...")
+            
+            # Abrindo o Arquivo
+            self.df = pd.read_csv("DataSet.csv", sep=';', decimal=',')
+
+            # Renomeando Colunas
+            self.df.rename(columns={ 
+                'chuva_durante_floração_mm': 'chuva_flor', 
+                'chuva_durante_colheita_mm': 'chuva_colheita', 
+                'chuva_total_anual_mm': 'chuva_total', 
+                'anomalia_chuva_floração_mm': 'anomalia_flor',
+                'temperatura_média_floração_C': 'temp_flor', 
+                'umidade_relativa_média_floração_%': 'umid_flor', 
+                'evento_ENSO': 'ENSO', 
+                'produtividade_kg_por_ha': 'produtividade', 
+                'produtividade_safra': 'safra' 
+            }, inplace=True) 
+
+            # Transformando em escala fracionaria 
+            self.df['umid_flor'] = self.df['umid_flor'] / 100 
+            self.df.set_index('ano', inplace=True) 
+            
+            self.log_to_console("Dados carregados com sucesso!")
+            self.log_to_console(f"\nForma do DataFrame: {self.df.shape}")
+            self.log_to_console(f"Colunas: {list(self.df.columns)}")
+            
+            # Captura informações do DataFrame
+            buffer = StringIO()
+            self.df.info(buf=buffer)
+            self.log_to_console("\nInformações do DataFrame:")
+            self.log_to_console(buffer.getvalue())
+            
+            # Valores ausentes
+            self.log_to_console("\nValores ausentes por coluna:")
+            self.log_to_console(str(self.df.isnull().sum()))
+            
+            # Resumo estatístico
+            self.log_to_console("\nResumo estatístico:")
+            self.log_to_console(str(self.df.describe().T))
+            
+            # Atualiza visualização dos dados
+            self.root.after(0, self.update_data_view)
+            
+            # Habilita botões
+            self.root.after(0, self.create_vars_btn.configure(state="normal"))
+            self.root.after(0, self.eda_btn.configure(state="normal"))
+            self.root.after(0, self.pipeline_btn.configure(state="normal"))
+            
+        except Exception as e:
+            self.log_to_console(f"Erro ao carregar dados: {str(e)}")
+            messagebox.showerror("Erro", f"Erro ao carregar dados: {str(e)}")
+            
+    def create_additional_vars(self):
+        """Cria variáveis sazonais e climáticas adicionais"""
+        try:
+            self.log_to_console("\nCriando variáveis adicionais...")
+            
+            # 1. Chuva relativa durante floração 
+            self.df['chuva_relativa'] = self.df['chuva_flor'] / self.df['chuva_total'] 
+            # 2. Binário: anomalia positiva ou não 
+            self.df['anomalia_bin'] = (self.df['anomalia_flor'] > 0).astype(int) 
+            # 3. Codificar ENSO como variáveis dummies 
+            self.df = pd.get_dummies(self.df, columns=['ENSO'], drop_first=True)
+            
+            self.log_to_console("Variáveis adicionais criadas!")
+            self.log_to_console(f"Novas colunas: {list(self.df.columns)}")
+            
+            # Atualiza visualização
+            self.update_data_view()
+            
+            # Habilita botões de preparação
+            self.prep_regression_btn.configure(state="normal")
+            self.prep_classification_btn.configure(state="normal")
+            
+        except Exception as e:
+            self.log_to_console(f"Erro ao criar variáveis: {str(e)}")
+            messagebox.showerror("Erro", f"Erro ao criar variáveis: {str(e)}")
+            
+    def run_eda(self):
+        """Executa análise exploratória selecionada"""
+        try:
+            option = self.eda_options.get()
+            
+            if option == "Boxplot: ENSO × Produtividade":
+                self.boxplot_enso()
+            elif option == "Scatter: Temperatura × Produtividade":
+                self.scatterplot_temp()
+            elif option == "Histograma de Variáveis":
+                self.histogram_vars()
+            elif option == "Heatmap de Correlação":
+                self.heatmap_correlation()
+            elif option == "Pairplot":
+                self.pairplot_vars()
+            elif option == "Scree Plot (PCA)":
+                self.scree_plot()
+            elif option == "Visualização PCA 2D":
+                self.plot_pca_2d()
+            elif option == "Função de Custo 1D":
+                self.plot_cost_function_1d()
+            elif option == "Função de Custo 2D":
+                self.plot_cost_function_2d()
+            elif option == "Função de Custo 2D (PCA)":
+                self.plot_cost_function_2d_pca()
+            elif option == "Gráficos de Resíduos":
+                self.plot_residuals()
+            elif option == "Fronteiras de Decisão (PCA)":
+                self.plot_decision_boundaries()
+                
+        except Exception as e:
+            self.log_to_console(f"Erro na análise exploratória: {str(e)}")
+            messagebox.showerror("Erro", f"Erro na análise exploratória: {str(e)}")
+            
+    def boxplot_enso(self):
+        """Cria boxplot ENSO × Produtividade"""
+        try:
+            fig, ax = plt.subplots(figsize=(10, 6))
+            
+            # Recria a coluna ENSO temporariamente para o plot
+            df_temp = self.df.copy()
+            
+            # Identifica o estado ENSO baseado nas colunas dummy
+            if 'ENSO_La Niña' in df_temp.columns and 'ENSO_Neutro' in df_temp.columns:
+                df_temp['ENSO'] = 'El Niño'  # Default
+                df_temp.loc[df_temp['ENSO_La Niña'] == 1, 'ENSO'] = 'La Niña'
+                df_temp.loc[df_temp['ENSO_Neutro'] == 1, 'ENSO'] = 'Neutro'
+            else:
+                self.log_to_console("Colunas ENSO não encontradas. Execute 'Criar Variáveis Adicionais' primeiro.")
+                return
+            
+            sns.boxplot(
+                data=df_temp,
+                x='ENSO',
+                y='produtividade',
+                order=['La Niña', 'Neutro', 'El Niño'],
+                ax=ax
+            )
+            ax.set_title('Produtividade vs. Evento ENSO', fontsize=14)
+            ax.set_xlabel('Evento ENSO', fontsize=12)
+            ax.set_ylabel('Produtividade (kg/ha)', fontsize=12)
+            
+            plt.tight_layout()
+            self.show_plot(fig)
+            return fig
+            
+        except Exception as e:
+            self.log_to_console(f"Erro ao criar boxplot: {str(e)}")
+            return None
+        
+    def scatterplot_temp(self):
+        """Cria scatterplot Temperatura × Produtividade"""
+        try:
+            fig, ax = plt.subplots(figsize=(10, 6))
+            
+            # Recria a coluna ENSO temporariamente
+            df_temp = self.df.copy()
+            if 'ENSO_La Niña' in df_temp.columns and 'ENSO_Neutro' in df_temp.columns:
+                df_temp['ENSO'] = 'El Niño'
+                df_temp.loc[df_temp['ENSO_La Niña'] == 1, 'ENSO'] = 'La Niña'
+                df_temp.loc[df_temp['ENSO_Neutro'] == 1, 'ENSO'] = 'Neutro'
+            
+            sns.scatterplot(
+                data=df_temp,
+                x='temp_flor',
+                y='produtividade',
+                hue='ENSO' if 'ENSO' in df_temp.columns else None,
+                s=80,
+                alpha=0.8,
+                ax=ax
+            )
+            ax.set_title('Temperatura durante floração vs. Produtividade', fontsize=14)
+            ax.set_xlabel('Temperatura média durante floração (°C)', fontsize=12)
+            ax.set_ylabel('Produtividade (kg/ha)', fontsize=12)
+            
+            plt.tight_layout()
+            self.show_plot(fig)
+            return fig
+            
+        except Exception as e:
+            self.log_to_console(f"Erro ao criar scatterplot: {str(e)}")
+            return None
+        
+    def histogram_vars(self):
+        """Cria histogramas das variáveis numéricas"""
+        try:
+            numeric_cols = self.df.select_dtypes(include='number')
+            n_cols = len(numeric_cols.columns)
+            n_rows = int(np.ceil(n_cols / 3))
+            
+            fig, axes = plt.subplots(n_rows, 3, figsize=(8, 2.5*n_rows))
+            axes = axes.flatten()
+            
+            for i, col in enumerate(numeric_cols.columns):
+                if i < len(axes):
+                    numeric_cols[col].hist(bins=15, ax=axes[i])
+                    axes[i].set_title(col, fontsize=8)
+                    axes[i].tick_params(axis='both', which='major', labelsize=7)
+                    
+            # Remove eixos extras
+            for i in range(len(numeric_cols.columns), len(axes)):
+                fig.delaxes(axes[i])
+                
+            plt.suptitle("Distribuições das variáveis numéricas", fontsize=10)
+            plt.tight_layout()
+            self.show_plot(fig)
+            return fig
+            
+        except Exception as e:
+            self.log_to_console(f"Erro ao criar histogramas: {str(e)}")
+            return None
+        
+    def heatmap_correlation(self):
+        """Cria heatmap de correlação"""
+        try:
+            fig, ax = plt.subplots(figsize=(10, 8))
+            
+            # Seleciona só as colunas numéricas
+            variaveis_numericas = self.df.select_dtypes(include='number')
+            
+            # Calcula a matriz de correlação
+            correlacao = variaveis_numericas.corr()
+            
+            # Heatmap
+            sns.heatmap(
+                correlacao,
+                annot=True,
+                fmt=".2f",
+                cmap='coolwarm',
+                linewidths=0.5,
+                square=True,
+                cbar_kws={"shrink": .8},
+                vmin=-1, vmax=1,
+                ax=ax
+            )
+            ax.set_title('Matriz de Correlação entre Variáveis Numéricas')
+            
+            plt.tight_layout()
+            self.show_plot(fig)
+            return fig
+            
+        except Exception as e:
+            self.log_to_console(f"Erro ao criar heatmap: {str(e)}")
+            return None
+        
+    def pairplot_vars(self):
+        """Cria pairplot das variáveis"""
+        try:
+            self.log_to_console("Gerando pairplot... Isso pode demorar um pouco.")
+            
+            # Seleciona as variáveis numéricas principais
+            cols_plot = ['chuva_flor', 'chuva_colheita', 'chuva_total',
+                        'anomalia_flor', 'temp_flor', 'umid_flor', 'produtividade']
+            
+            # Verifica se as colunas existem
+            cols_plot = [col for col in cols_plot if col in self.df.columns]
+            
+            # Cria o pairplot com tamanho reduzido
+            g = sns.pairplot(
+                self.df[cols_plot],
+                corner=True,
+                diag_kind='hist',
+                plot_kws={'alpha': 0.7, 's': 20, 'edgecolor': 'k'},
+                height=1.5,  # Altura de cada subplot
+                aspect=1.2    # Proporção largura/altura
+            )
+            
+            # Ajusta o tamanho da fonte dos títulos
+            for ax in g.axes.flat:
+                if ax is not None:
+                    ax.set_title(ax.get_title(), fontsize=8)
+                    ax.tick_params(axis='both', which='major', labelsize=7)
+            
+            g.fig.suptitle("Matriz de Dispersão entre Variáveis", fontsize=10, y=1.02)
+            
+            # Ajusta o layout para evitar sobreposição
+            plt.tight_layout()
+            
+            self.show_plot(g.fig)
+            return g.fig
+            
+        except Exception as e:
+            self.log_to_console(f"Erro ao criar pairplot: {str(e)}")
+            return None
+            
+    def prepare_regression(self):
+        """Prepara dados para regressão"""
+        try:
+            self.log_to_console("\n=== PREPARANDO DADOS PARA REGRESSÃO ===")
+            
+            # 1. Definindo X e y
+            self.X = self.df.drop(columns=['produtividade', 'safra'])
+            self.y = self.df['produtividade']
+            
+            # 2. Verificando colunas numéricas e binárias
+            self.colunas_numericas = ['chuva_flor', 'chuva_colheita', 'chuva_total',
+                                     'anomalia_flor', 'temp_flor', 'umid_flor', 'chuva_relativa']
+            self.colunas_binarias = ['anomalia_bin', 'ENSO_La Niña', 'ENSO_Neutro']
+            
+            # 3. Criando o transformador
+            self.preprocessador = ColumnTransformer(
+                transformers=[
+                    ('num', StandardScaler(), self.colunas_numericas),
+                    ('bin', 'passthrough', self.colunas_binarias)
+                ]
+            )
+            
+            # 4. Separando treino e teste
+            self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(
+                self.X, self.y, test_size=0.2, shuffle=False
+            )
+            
+            # 5. Aplicando pré-processamento
+            self.X_scaled = self.preprocessador.fit_transform(self.X)
+            self.X_train_scaled = self.preprocessador.transform(self.X_train)
+            self.X_test_scaled = self.preprocessador.transform(self.X_test)
+            
+            # 6. PCA para análise completa (Scree Plot)
+            self.pca_full = PCA()
+            self.pca_full.fit(self.X_scaled)
+            
+            # 7. PCA para redução de dimensionalidade
+            self.pca_model = PCA(n_components=2)
+            self.X_pca = self.pca_model.fit_transform(self.X_scaled)
+            self.X_pca_train = self.pca_model.transform(self.X_train_scaled)
+            self.X_pca_test = self.pca_model.transform(self.X_test_scaled)
+            
+            # 8. Criando DataFrame PCA
+            self.df_PCA = pd.DataFrame(self.X_pca, columns=['PC1', 'PC2'], index=self.X.index)
+            self.df_PCA['produtividade'] = self.y
+            self.df_PCA['safra'] = self.df['safra']
+            
+            # 9. Inicializando o scaler para comparação de modelos
+            self.scaler = StandardScaler()
+            self.scaler.fit(self.X[self.colunas_numericas])
+            
+            # 10. Criando DataFrame com features transformadas
+            self.X_scaled_df = pd.DataFrame(
+                self.X_scaled,
+                columns=self.colunas_numericas + self.colunas_binarias,
+                index=self.X.index
+            )
+            
+            self.log_to_console(f"Dados preparados para regressão!")
+            self.log_to_console(f"Tamanho do conjunto de treino: {len(self.X_train)}")
+            self.log_to_console(f"Tamanho do conjunto de teste: {len(self.X_test)}")
+            
+            # Habilita botão de treino
+            self.train_regression_btn.configure(state="normal")
+            
+        except Exception as e:
+            self.log_to_console(f"Erro ao preparar regressão: {str(e)}")
+            messagebox.showerror("Erro", f"Erro ao preparar regressão: {str(e)}")
+
+    def train_regression(self):
+        """Treina modelos de regressão"""
+        try:
+            self.log_to_console("\n=== TREINANDO MODELOS DE REGRESSÃO ===")
+
+            # 1. Modelo Linear
+            self.modelo_linear = LinearRegression()
+            self.modelo_linear.fit(self.X_train_scaled, self.y_train)
+            self.y_pred_linear = self.modelo_linear.predict(self.X_test_scaled)
+            mse_linear = mean_squared_error(self.y_test, self.y_pred_linear)
+            rmse_linear = mse_linear ** 0.5
+            r2_linear = r2_score(self.y_test, self.y_pred_linear)
+            self.log_to_console(f"[Regressão linear] RMSE: {rmse_linear:.2f} | R²: {r2_linear:.2%}")
+
+            # 2. Modelo Ridge
+            lambda_regressao = 1
+            self.modelo_ridge = Ridge(alpha=lambda_regressao)
+            self.modelo_ridge.fit(self.X_train_scaled, self.y_train)
+            self.y_pred_ridge = self.modelo_ridge.predict(self.X_test_scaled)
+            mse_ridge = mean_squared_error(self.y_test, self.y_pred_ridge)
+            rmse_ridge = mse_ridge ** 0.5
+            r2_ridge = r2_score(self.y_test, self.y_pred_ridge)
+            self.log_to_console(f"[Ridge (λ={lambda_regressao})] RMSE: {rmse_ridge:.2f} | R²: {r2_ridge:.2%}")
+
+            # 3. Modelo PCA Linear
+            self.modelo_pca = LinearRegression()
+            self.modelo_pca.fit(self.X_pca_train, self.y_train)
+            self.y_pred_pca = self.modelo_pca.predict(self.X_pca_test)
+            mse_pca = mean_squared_error(self.y_test, self.y_pred_pca)
+            rmse_pca = mse_pca ** 0.5
+            r2_pca = r2_score(self.y_test, self.y_pred_pca)
+            self.log_to_console(f"[PCA + Regressão linear] RMSE: {rmse_pca:.2f} | R²: {r2_pca:.2%}")
+
+            # 4. Modelo PCA Ridge
+            self.modelo_pca_ridge = Ridge(alpha=lambda_regressao)
+            self.modelo_pca_ridge.fit(self.X_pca_train, self.y_train)
+            self.y_pred_pca_ridge = self.modelo_pca_ridge.predict(self.X_pca_test)
+            mse_pca_ridge = mean_squared_error(self.y_test, self.y_pred_pca_ridge)
+            rmse_pca_ridge = mse_pca_ridge ** 0.5
+            r2_pca_ridge = r2_score(self.y_test, self.y_pred_pca_ridge)
+            self.log_to_console(f"[PCA + Ridge (λ={lambda_regressao})] RMSE: {rmse_pca_ridge:.2f} | R²: {r2_pca_ridge:.2%}")
+
+            self.log_to_console("Modelos de regressão treinados com sucesso!")
+
+        except Exception as e:
+            self.log_to_console(f"Erro ao treinar modelos de regressão: {str(e)}")
+            messagebox.showerror("Erro", f"Erro ao treinar modelos de regressão: {str(e)}")
+
+    def prepare_classification(self):
+        """Prepara dados para classificação"""
+        try:
+            self.log_to_console("\n=== PREPARANDO DADOS PARA CLASSIFICAÇÃO ===")
+
+            # 1. Mapeamento de classes
+            mapa_safra = {'baixa': 0, 'media': 1, 'alta': 2}
+            self.df['safra_num'] = self.df['safra'].map(mapa_safra)
+
+            # 2. Seleção de features
+            self.X_class = self.df[['chuva_flor', 'chuva_colheita', 'chuva_total',
+                                  'anomalia_flor', 'temp_flor', 'umid_flor', 'chuva_relativa']]
+            self.y_class = self.df['safra_num'].fillna(1)
+
+            # 3. Padronização
+            self.scaler_class = StandardScaler()
+            self.X_class_scaled = self.scaler_class.fit_transform(self.X_class)
+
+            # 4. PCA
+            self.pca_class = PCA(n_components=2)
+            self.X_class_pca = self.pca_class.fit_transform(self.X_class_scaled)
+
+            # 5. Divisão treino-teste
+            self.X_train_class, self.X_test_class, self.y_train_class, self.y_test_class = train_test_split(
+                self.X_class_scaled, self.y_class, test_size=0.3, random_state=42, stratify=self.y_class
+            )
+            
+            # 6. PCA para treino e teste
+            self.X_train_pca = self.pca_class.transform(self.X_train_class)
+            self.X_test_pca = self.pca_class.transform(self.X_test_class)
+
+            # 7. Binarização das classes para ROC
+            classes = [0, 1, 2]
+            self.y_test_bin = label_binarize(self.y_test_class, classes=classes)
+            self.y_train_bin = label_binarize(self.y_train_class, classes=classes)
+            n_classes = len(classes)
+
+            self.log_to_console("Dados preparados para classificação!")
+            self.log_to_console(f"Classes: {mapa_safra}")
+            self.log_to_console(f"Distribuição das classes:\n{self.y_class.value_counts().sort_index()}")
+
+            self.train_classification_btn.configure(state="normal")
+
+        except Exception as e:
+            self.log_to_console(f"Erro ao preparar classificação: {str(e)}")
+            messagebox.showerror("Erro", f"Erro ao preparar classificação: {str(e)}")
+
+    def train_classification(self):
+        """Treina modelos de classificação"""
+        try:
+            self.log_to_console("\n=== TREINANDO MODELOS DE CLASSIFICAÇÃO ===")
+
+            # 1. Modelo Clássico
+            self.modelo_classico = OneVsRestClassifier(LogisticRegression(max_iter=1000))
+            self.modelo_classico.fit(self.X_train_class, self.y_train_class)
+            self.y_pred_classico = self.modelo_classico.predict(self.X_test_class)
+            self.y_prob_classico = self.modelo_classico.predict_proba(self.X_test_class)
+
+            # 2. Modelo PCA
+            self.modelo_pca_class = OneVsRestClassifier(LogisticRegression(max_iter=1000))
+            self.modelo_pca_class.fit(self.X_train_pca, self.y_train_class)
+            self.y_pred_pca = self.modelo_pca_class.predict(self.X_test_pca)
+            self.y_prob_pca = self.modelo_pca_class.predict_proba(self.X_test_pca)
+
+            # 3. Métricas
+            acc_classico = accuracy_score(self.y_test_class, self.y_pred_classico)
+            acc_pca = accuracy_score(self.y_test_class, self.y_pred_pca)
+            
+            self.log_to_console(f"Acurácia do modelo clássico: {acc_classico:.2%}")
+            self.log_to_console(f"Acurácia do modelo PCA: {acc_pca:.2%}")
+            
+            self.log_to_console("\nRelatório de Classificação - Modelo Clássico:")
+            self.log_to_console(classification_report(self.y_test_class, self.y_pred_classico))
+            
+            self.log_to_console("\nRelatório de Classificação - Modelo PCA:")
+            self.log_to_console(classification_report(self.y_test_class, self.y_pred_pca))
+
+        except Exception as e:
+            self.log_to_console(f"Erro ao treinar modelos de classificação: {str(e)}")
+            messagebox.showerror("Erro", f"Erro ao treinar modelos de classificação: {str(e)}")
+
+    def run_qlearning(self):
+        """Executa o algoritmo de aprendizado por reforço Q-learning"""
+        try:
+            self.log_to_console("\n=== EXECUTANDO APRENDIZADO POR REFORÇO (Q-LEARNING) ===")
+
+            alpha = 0.9
+            gamma = 0.9
+            epsilon = float(self.rl_epsilon.get())
+
+            modo = self.rl_mode.get()
+            num_episodios = int(self.rl_episodes.get())
+
+            q_table = {
+                'muito_seco': {'muita_agua': 0.0, 'regar': 0.0, 'pouca_agua': 0.0, 'nao_regar': 0.0},
+                'seco': {'muita_agua': 0.0, 'regar': 0.0, 'pouca_agua': 0.0, 'nao_regar': 0.0},
+                'ideal': {'muita_agua': 0.0, 'regar': 0.0, 'pouca_agua': 0.0, 'nao_regar': 0.0},
+                'encharcado': {'muita_agua': 0.0, 'regar': 0.0, 'pouca_agua': 0.0, 'nao_regar': 0.0},
+            }
+
+            def transicao(estado, acao):
+                if estado == 'muito_seco':
+                    if acao == 'pouca_agua': return 'muito_seco'
+                    elif acao == 'regar': return 'seco'
+                    elif acao == 'muita_agua': return 'ideal'
+                    else: return 'muito_seco'
+                elif estado == 'seco':
+                    if acao == 'regar': return 'ideal'
+                    elif acao == 'pouca_agua': return 'seco'
+                    elif acao == 'muita_agua': return 'encharcado'
+                    else: return 'seco'
+                elif estado == 'ideal':
+                    if acao == 'regar': return 'encharcado'
+                    elif acao == 'pouca_agua': return 'ideal'
+                    elif acao == 'muita_agua': return 'encharcado'
+                    else: return 'seco'
+                elif estado == 'encharcado':
+                    if acao == 'regar': return 'encharcado'
+                    elif acao == 'pouca_agua': return 'ideal'
+                    elif acao == 'muita_agua': return 'encharcado'
+                    else: return 'ideal'
+
+            def recompensa(estado, acao, modo='padrão'):
+                padrao = {
+                    'muito_seco': {'regar': 3, 'pouca_agua': 1, 'nao_regar': -1, 'muita_agua': 5},
+                    'seco': {'regar': 5, 'pouca_agua': 2, 'nao_regar': -1, 'muita_agua': -3},
+                    'ideal': {'nao_regar': 5, 'pouca_agua': 2, 'regar': -3, 'muita_agua': -5},
+                    'encharcado': {'nao_regar': 2, 'pouca_agua': -1, 'regar': -3, 'muita_agua': -5},
+                }
+                extremo = {
+                    'muito_seco': {'regar': 6, 'pouca_agua': 0, 'nao_regar': -3, 'muita_agua': 8},
+                    'seco': {'regar': 8, 'pouca_agua': 5, 'nao_regar': -4, 'muita_agua': -6},
+                    'ideal': {'nao_regar': -2, 'pouca_agua': 4, 'regar': 7, 'muita_agua': -4},
+                    'encharcado': {'nao_regar': -4, 'pouca_agua': -2, 'regar': 3, 'muita_agua': -6},
+                }
+                tabelas = {'padrão': padrao, 'extremo': extremo}
+                if modo not in tabelas:
+                    raise ValueError("Modo inválido. Use 'padrão' ou 'extremo'.")
+                return tabelas[modo][estado].get(acao, -10)
+
+            historico = []
+
+            for episodio in range(1, num_episodios):
+                estado = random.choice(['muito_seco', 'seco', 'ideal', 'encharcado'])
+                for passo in range(1):
+                    if random.random() < epsilon:
+                        acao = random.choice(['muita_agua', 'regar', 'pouca_agua', 'nao_regar'])
+                    else:
+                        acao = max(q_table[estado], key=q_table[estado].get)
+                    prox_estado = transicao(estado, acao)
+                    r = recompensa(estado, acao, modo)
+
+                    max_q_prox = max(q_table[prox_estado].values())
+                    q_atual = q_table[estado][acao]
+                    q_novo = q_atual + alpha * (r + gamma * max_q_prox - q_atual)
+                    q_table[estado][acao] = q_novo
+
+                    historico.append({
+                        'Episódio': episodio,
+                        'Estado': estado,
+                        'Ação': acao,
+                        'Recompensa': r,
+                        'Próximo estado': prox_estado,
+                        'Q(s,a)': round(q_novo, 2)
+                    })
+                    estado = prox_estado
+
+            q_df = pd.DataFrame(q_table).T
+            self.log_to_console("\nTabela final de Q-values:")
+            self.log_to_console(str(q_df))
+
+            historico_df = pd.DataFrame(historico)
+            self.log_to_console("\nÚltimas 10 decisões do histórico:")
+            self.log_to_console(historico_df.tail(10).to_string(index=False))
+
+        except Exception as e:
+            self.log_to_console(f"Erro no Q-learning: {str(e)}")
+            messagebox.showerror("Erro", f"Erro no Q-learning: {str(e)}")
+
+    def run_complete_pipeline(self):
+        """Executa todo o pipeline completo"""
+        try:
+            # Limpa gráficos anteriores
+            self.clear_plots()
+            self.log_to_console("\n=== INICIANDO PIPELINE COMPLETO ===")
+            
+            # Executa todas as etapas
+            self.load_data()
+            self.create_additional_vars()
+            
+            # Gera e armazena todos os gráficos EDA
+            self.log_to_console("\nGerando visualizações exploratórias...")
+            self.boxplot_enso()
+            self.scatterplot_temp()
+            self.histogram_vars()
+            self.heatmap_correlation()
+            self.pairplot_vars()
+            
+            # Continua com o resto do pipeline
+            self.log_to_console("\nPreparando modelos de regressão...")
+            self.prepare_regression()  # Já inclui o PCA e Scree Plot
+            self.train_regression()
+            
+            self.log_to_console("\nPreparando modelos de classificação...")
+            self.prepare_classification()
+            self.train_classification()
+            
+            self.log_to_console("\nExecutando Q-learning...")
+            self.run_qlearning()
+            
+            self.log_to_console("\n=== PIPELINE COMPLETO FINALIZADO ===")
+            self.results_text.insert("end", "Pipeline completo executado com sucesso!\n")
+            self.results_text.see("end")
+            
+            # Exibe o primeiro gráfico se houver algum
+            if self.plots:
+                self.current_plot_index = 0
+                self.display_current_plot()
+            else:
+                self.log_to_console("Nenhum gráfico foi gerado durante o pipeline.")
+                
+        except Exception as e:
+            self.log_to_console(f"Erro no pipeline completo: {str(e)}")
+            messagebox.showerror("Erro", f"Erro no pipeline completo: {str(e)}")
+
+    def scree_plot(self):
+        """Cria Scree Plot para análise PCA"""
+        try:
+            if not hasattr(self, 'X_padronizado'):
+                self.log_to_console("Execute 'Preparar Regressão' primeiro para gerar o Scree Plot.")
+                return None
+
+            if not hasattr(self, 'pca_full'):
+                self.log_to_console("PCA não foi executado. Execute 'Preparar Regressão' primeiro.")
+                return None
+
+            fig, ax = plt.subplots(figsize=(10, 6))
+            ax.plot(
+                range(1, len(self.pca_full.explained_variance_ratio_) + 1),
+                self.pca_full.explained_variance_ratio_,
+                marker='o'
+            )
+            ax.set_title('Scree Plot - Variância Explicada por Componente')
+            ax.set_xlabel('Componente Principal')
+            ax.set_ylabel('Proporção da Variância')
+            ax.grid(True)
+            plt.tight_layout()
+            self.show_plot(fig)
+            return fig
+
+        except Exception as e:
+            self.log_to_console(f"Erro ao criar Scree Plot: {str(e)}")
+            return None
+
+    def plot_rmse_lambda(self):
+        """Plota comparação do RMSE em função de lambda"""
+        try:
+            # Dados simulados para plotagem
+            lambdas = [0.1, 1, 10, 100, 1000, 10000, 30000, 100000, 300000, 1000000]
+            rmse_sem_pca = [71.19, 68.30, 54.97, 34.91, 26.38, 25.61, 25.56, 25.55, 25.54, 25.54]
+            rmse_com_pca = [43.25, 42.98, 40.61, 31.20, 25.97, 25.57, 25.55, 25.54, 25.54, 25.54]
+
+            fig, ax = plt.subplots(figsize=(10, 6))
+            ax.plot(lambdas, rmse_sem_pca, marker='o', label='Sem PCA')
+            ax.plot(lambdas, rmse_com_pca, marker='s', label='Com PCA')
+            ax.set_xscale('log')
+            ax.set_xlabel("λ (log scale)")
+            ax.set_ylabel("RMSE")
+            ax.set_title("Comparação do RMSE em função de λ (Ridge)")
+            ax.grid(True)
+            ax.legend()
+            plt.tight_layout()
+            self.show_plot(fig)
+            return fig
+
+        except Exception as e:
+            self.log_to_console(f"Erro ao criar gráfico RMSE vs Lambda: {str(e)}")
+            return None
+
+    def plot_cost_function_1d(self):
+        """Plota função de custo 1D para uma variável"""
+        try:
+            if not hasattr(self, 'X') or not hasattr(self, 'y'):
+                self.log_to_console("Execute 'Carregar Dados' primeiro para gerar a função de custo.")
+                return None
+
+            x_var = 'temp_flor'
+            if x_var not in self.X.columns:
+                self.log_to_console(f"Variável {x_var} não encontrada nos dados.")
+                return None
+
+            x = self.X[x_var].values
+            y = self.y.values
+            m = len(y)
+            x_centralizado = x - x.mean()
+            theta1_vals = np.linspace(-200, 200, 200)
+            custos = [(1 / (2 * m)) * np.sum((theta1 * x_centralizado - y) ** 2) for theta1 in theta1_vals]
+
+            fig, ax = plt.subplots(figsize=(8, 5))
+            ax.plot(theta1_vals, custos)
+            ax.set_xlabel("θ₁")
+            ax.set_ylabel("J(θ₁)")
+            ax.set_title(f"Função de Custo - {x_var} (x centralizado)")
+            ax.grid(True)
+            plt.tight_layout()
+            self.show_plot(fig)
+            return fig
+
+        except Exception as e:
+            self.log_to_console(f"Erro ao criar função de custo 1D: {str(e)}")
+            return None
+
+    def plot_cost_function_2d(self):
+        """Plota função de custo 2D para duas variáveis"""
+        try:
+            if not hasattr(self, 'X') or not hasattr(self, 'y'):
+                self.log_to_console("Execute 'Carregar Dados' primeiro para gerar a função de custo.")
+                return None
+
+            x_vars = ['temp_flor', 'chuva_flor']
+            for var in x_vars:
+                if var not in self.X.columns:
+                    self.log_to_console(f"Variável {var} não encontrada nos dados.")
+                    return None
+
+            x1 = self.X[x_vars[0]].values
+            x2 = self.X[x_vars[1]].values
+            y = self.y.values
+            m = len(y)
+            X_mat = np.vstack([np.ones(m), x1, x2]).T
+
+            theta1_vals = np.linspace(-200, 200, 100)
+            theta2_vals = np.linspace(-200, 200, 100)
+            J_vals = np.zeros((100, 100))
+
+            for i in range(100):
+                for j in range(100):
+                    theta = np.array([0, theta1_vals[i], theta2_vals[j]])
+                    h = X_mat @ theta
+                    J_vals[j, i] = (1 / (2 * m)) * np.sum((h - y) ** 2)
+
+            T1, T2 = np.meshgrid(theta1_vals, theta2_vals)
+            fig = plt.figure(figsize=(10, 6))
+            ax = fig.add_subplot(111, projection='3d')
+            ax.plot_surface(T1, T2, J_vals, cmap='viridis', edgecolor='none', alpha=0.9)
+            ax.set_xlabel(f"θ₁ ({x_vars[0]})")
+            ax.set_ylabel(f"θ₂ ({x_vars[1]})")
+            ax.set_zlabel("J(θ)")
+            ax.set_title(f"Superfície da Função de Custo — {x_vars[0]} e {x_vars[1]}")
+            fig.subplots_adjust(right=0.85)
+            self.show_plot(fig)
+            return fig
+
+        except Exception as e:
+            self.log_to_console(f"Erro ao criar função de custo 2D: {str(e)}")
+            return None
+
+    def plot_cost_function_2d_pca(self):
+        """Plota função de custo 2D para componentes PCA"""
+        try:
+            if not hasattr(self, 'X_pca'):
+                self.log_to_console("Execute 'Preparar Regressão' primeiro para gerar a função de custo PCA.")
+                return None
+
+            if self.X_pca.shape[1] < 2:
+                self.log_to_console("PCA precisa ter pelo menos 2 componentes. Execute 'Preparar Regressão' primeiro.")
+                return None
+
+            pc1 = self.X_pca[:, 0]
+            pc2 = self.X_pca[:, 1]
+            y = self.y.values
+            m = len(y)
+            X_mat = np.vstack([np.ones(m), pc1, pc2]).T
+
+            theta1_vals = np.linspace(-200, 200, 100)
+            theta2_vals = np.linspace(-200, 200, 100)
+            J_vals = np.zeros((100, 100))
+
+            for i in range(100):
+                for j in range(100):
+                    theta = np.array([0, theta1_vals[i], theta2_vals[j]])
+                    h = X_mat @ theta
+                    J_vals[j, i] = (1 / (2 * m)) * np.sum((h - y) ** 2)
+
+            T1, T2 = np.meshgrid(theta1_vals, theta2_vals)
+            fig = plt.figure(figsize=(10, 6))
+            ax = fig.add_subplot(111, projection='3d')
+            ax.plot_surface(T1, T2, J_vals, cmap='viridis', edgecolor='none', alpha=0.9)
+            ax.set_xlabel("θ₁ (PC1)")
+            ax.set_ylabel("θ₂ (PC2)")
+            ax.set_zlabel("J(θ)")
+            ax.set_title("Superfície da Função de Custo — Componentes Principais (PCA)")
+            fig.subplots_adjust(right=0.85)
+            self.show_plot(fig)
+            return fig
+
+        except Exception as e:
+            self.log_to_console(f"Erro ao criar função de custo 2D PCA: {str(e)}")
+            return None
+
+    def plot_residuals(self):
+        """Plota gráficos de resíduos para todos os modelos"""
+        try:
+            if not hasattr(self, 'y'):
+                self.log_to_console("Execute 'Carregar Dados' primeiro.")
+                return None
+
+            if not all(hasattr(self, attr) for attr in ['modelo_linear', 'modelo_ridge', 'modelo_pca', 'modelo_pca_ridge']):
+                self.log_to_console("Execute 'Treinar Regressão' primeiro para gerar os gráficos de resíduos.")
+                return None
+
+            # Previsões
+            y_pred_linear = self.modelo_linear.predict(self.X_scaled)
+            y_pred_ridge = self.modelo_ridge.predict(self.X_scaled)
+            y_pred_pca = self.modelo_pca.predict(self.X_pca)
+            y_pred_pca_ridge = self.modelo_pca_ridge.predict(self.X_pca)
+
+            # Cria figura com subplots
+            fig, axes = plt.subplots(2, 2, figsize=(12, 10))
+            axes = axes.flatten()
+
+            # Função auxiliar para plotar resíduos
+            def plot_residuos_ax(y_true, y_pred, titulo, ax):
+                residuos = y_true - y_pred
+                ax.scatter(y_pred, residuos, color='royalblue', alpha=0.7)
+                ax.axhline(0, color='red', linestyle='--')
+                ax.set_xlabel("Previsão")
+                ax.set_ylabel("Resíduo")
+                ax.set_title(f"Resíduos — {titulo}")
+                ax.grid(True)
+
+            # Plota resíduos para cada modelo
+            plot_residuos_ax(self.y, y_pred_linear, "Regressão Linear", axes[0])
+            plot_residuos_ax(self.y, y_pred_ridge, "Regressão Regularizada (λ = 1.000.000)", axes[1])
+            plot_residuos_ax(self.y, y_pred_pca, "PCA + Regressão Linear", axes[2])
+            plot_residuos_ax(self.y, y_pred_pca_ridge, "PCA + Regularizada (λ = 100.000)", axes[3])
+
+            plt.tight_layout()
+            self.show_plot(fig)
+            return fig
+
+        except Exception as e:
+            self.log_to_console(f"Erro ao criar gráficos de resíduos: {str(e)}")
+            return None
+
+    def plot_pca_2d(self):
+        """Visualiza os dados em 2D usando os componentes principais"""
+        try:
+            if not hasattr(self, 'df_PCA'):
+                self.log_to_console("Execute 'Preparar Regressão' primeiro para gerar a visualização PCA 2D.")
+                return None
+
+            if 'PC1' not in self.df_PCA.columns or 'PC2' not in self.df_PCA.columns:
+                self.log_to_console("Componentes PCA não encontrados. Execute 'Preparar Regressão' primeiro.")
+                return None
+
+            fig, ax = plt.subplots(figsize=(10, 6))
+            sns.scatterplot(data=self.df_PCA, x='PC1', y='PC2', hue='safra', s=80, alpha=0.8, ax=ax)
+            ax.set_title('PCA - Componentes Principais coloridos por Safra')
+            ax.set_xlabel('Componente Principal 1')
+            ax.set_ylabel('Componente Principal 2')
+            ax.legend(title='Safra')
+            plt.tight_layout()
+            self.show_plot(fig)
+            return fig
+
+        except Exception as e:
+            self.log_to_console(f"Erro ao criar visualização PCA 2D: {str(e)}")
+            return None
+
+    def plot_decision_boundaries(self):
+        """Plota fronteiras de decisão do modelo com PCA"""
+        try:
+            if not hasattr(self, 'X_class_pca'):
+                self.log_to_console("Execute 'Preparar Classificação' primeiro.")
+                return None
+
+            if not hasattr(self, 'modelo_pca_class'):
+                self.log_to_console("Execute 'Treinar Classificação' primeiro para gerar as fronteiras de decisão.")
+                return None
+
+            if self.X_class_pca.shape[1] < 2:
+                self.log_to_console("PCA precisa ter pelo menos 2 componentes. Execute 'Preparar Classificação' primeiro.")
+                return None
+
+            h = 0.02  # Passo da malha
+            
+            # Geração da malha de pontos
+            x_min, x_max = self.X_class_pca[:, 0].min() - 1, self.X_class_pca[:, 0].max() + 1
+            y_min, y_max = self.X_class_pca[:, 1].min() - 1, self.X_class_pca[:, 1].max() + 1
+            xx, yy = np.meshgrid(np.arange(x_min, x_max, h), np.arange(y_min, y_max, h))
+            
+            # Predição sobre a malha
+            Z = self.modelo_pca_class.predict(np.c_[xx.ravel(), yy.ravel()])
+            Z = Z.reshape(xx.shape)
+            
+            # Paleta de cores
+            cmap_light = ListedColormap(['#FFAAAA', '#AAFFAA', '#AAAAFF'])
+            cmap_bold = ['red', 'green', 'blue']
+            
+            # Gráfico
+            fig, ax = plt.subplots(figsize=(8, 6))
+            ax.contourf(xx, yy, Z, cmap=cmap_light, alpha=0.5)
+            scatter = ax.scatter(self.X_class_pca[:, 0], self.X_class_pca[:, 1], 
+                               c=self.y_class, cmap=ListedColormap(cmap_bold), 
+                               edgecolor='k', s=60)
+            ax.set_xlabel("PC1")
+            ax.set_ylabel("PC2")
+            ax.set_title("Fronteiras de Decisão — PCA + Regressão Logística")
+            ax.legend(handles=scatter.legend_elements()[0], labels=['Baixa', 'Média', 'Alta'])
+            ax.grid(True)
+            plt.tight_layout()
+            self.show_plot(fig)
+            return fig
+
+        except Exception as e:
+            self.log_to_console(f"Erro ao criar fronteiras de decisão: {str(e)}")
+            return None
+
+    def run(self):
+        self.root.mainloop()
+
 if __name__ == "__main__":
-    menu_principal()
-
-#=======FEITO=======#
-# 1. Altere as recompensas 
-# a) Penalize mais o desperdício de água. 
-
-# b) Recompense melhor ações que mantêm o solo em estado ideal. 
-#==========-----------------========================----------==#
-
-# 2. Aumente o número de episódios 
-# a) Altere range(1, 51) para range(1, 201) e observe. linha 605
-#  a ação com maior valor na Tabela Q é considerada a mais vantajosa, ou seja, a decisão preferida pelo agente.
-#  ▪
-#  A Tabela Q se estabiliza melhor? 
-#   sim 👌
-# O agente passa a evitar ações ruins com mais consistência?
-#   sim 👌
-
-# 5. Altere as transições de estado 
-# a) E se regar muito sempre levasse a encharcamento, mesmo quando o 
-# solo estava ideal?
+    app = SafraAnalysisGUI()
+    app.run()
