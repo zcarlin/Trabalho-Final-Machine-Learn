@@ -1490,7 +1490,7 @@ password_entry = tk.Entry(main_frame, textvariable=password_var, show="*", font=
 password_entry.pack(pady=10, padx=40, fill="x")
     
 def login(username, password):
-    if username == "Walter Claudino da Silva Junior" and password == "SonicAutista":
+    if username == "teste" and password == "teste":
         # Mantém as referências para as imagens antes de destruir a janela
         main_frame.image1 = sonic_photo
         main_frame.image2 = citha_photo
