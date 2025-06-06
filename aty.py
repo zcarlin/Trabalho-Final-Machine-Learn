@@ -1,6 +1,8 @@
 import customtkinter as ctk
 import tkinter as tk
 from tkinter import ttk, messagebox, scrolledtext
+import hashlib
+from PIL import Image, ImageTk
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -1403,5 +1405,90 @@ class SafraAnalysisGUI:
         self.root.mainloop()
 
 if __name__ == "__main__":
-    app = SafraAnalysisGUI()
-    app.run()
+    # Tela de login
+    login_window = tk.Tk()
+    login_window.title("Login")
+    login_window.geometry("600x700")
+    login_window.configure(bg='#2196F3')  # Azul predominante
+    
+# Centraliza a janela
+screen_width = login_window.winfo_screenwidth()
+screen_height = login_window.winfo_screenheight()
+x = (screen_width/2) - (600/2)
+y = (screen_height/2) - (700/2)
+login_window.geometry(f"600x700+{int(x)}+{int(y)}")
+    
+# Frame principal
+main_frame = tk.Frame(login_window, bg='#2196F3')  # Fundo azul
+main_frame.pack(pady=30, fill="both", expand=True)
+    
+# Carrega e redimensiona as imagens
+try:
+    sonic_photo = ImageTk.PhotoImage(Image.open("sonic.png").resize((150, 150)))
+    citha_photo = ImageTk.PhotoImage(Image.open("citha.png").resize((150, 150)))
+except Exception as e:
+    messagebox.showerror("Erro", f"Erro ao carregar imagens: {str(e)}")
+    sonic_photo = None
+    citha_photo = None
+
+# Layout
+tk.Label(main_frame, text="Sistema de Análise de Safra", 
+         font=('Arial', 24, 'bold'), bg='#2196F3', fg='white').pack(pady=30)
+    
+# Frame para as imagens
+image_frame = tk.Frame(main_frame, bg='#2196F3')
+image_frame.pack(pady=20)
+    
+if sonic_photo and citha_photo:
+    # Frame para o lado esquerdo (Sonic)
+    left_frame = tk.Frame(image_frame, bg='#2196F3')
+    left_frame.pack(side='left', padx=20)
+        
+    # Frame para o lado direito (Citha)
+    right_frame = tk.Frame(image_frame, bg='#2196F3')
+    right_frame.pack(side='right', padx=20)
+        
+    # Labels com texto
+    tk.Label(left_frame, text="Crias Da Python", font=('Arial', 12, 'bold'), 
+             bg='#2196F3', fg='white').pack(pady=(0, 5))
+    tk.Label(right_frame, text="IFAM-CITHA", font=('Arial', 12, 'bold'), 
+             bg='#2196F3', fg='white').pack(pady=(0, 5))
+        
+    # Labels com imagens
+    tk.Label(left_frame, image=sonic_photo, bg='#2196F3').pack()
+    tk.Label(right_frame, image=citha_photo, bg='#2196F3').pack()
+    
+# Campos de entrada
+username_var = tk.StringVar()
+password_var = tk.StringVar()
+    
+tk.Label(main_frame, text="Usuário:", font=('Arial', 14), bg='#2196F3', fg='white').pack(pady=(30, 10))
+username_entry = tk.Entry(main_frame, textvariable=username_var, font=('Arial', 14), bg='white')
+username_entry.pack(pady=10, padx=40, fill="x")
+    
+tk.Label(main_frame, text="Senha:", font=('Arial', 14), bg='#2196F3', fg='white').pack(pady=10)
+password_entry = tk.Entry(main_frame, textvariable=password_var, show="*", font=('Arial', 14), bg='white')
+password_entry.pack(pady=10, padx=40, fill="x")
+    
+def login(username, password):
+    if username == "Walter Claudino da Silva Junior" and password == "SonicAutista":
+        # Mantém as referências para as imagens antes de destruir a janela
+        main_frame.image1 = sonic_photo
+        main_frame.image2 = citha_photo
+        
+        login_window.destroy()
+        app = SafraAnalysisGUI()
+        app.run()
+    else:
+        messagebox.showerror("Erro", "Usuário ou senha inválidos!")
+        password_var.set("")
+        password_entry.focus()
+
+# Botão de login
+login_button = tk.Button(main_frame, text="Login", font=('Arial', 14, 'bold'), 
+                        bg='#4CAF50', fg='white',  # Verde
+                        command=lambda: login(username_var.get(), password_var.get()))
+login_button.pack(pady=40, padx=40, fill="x")
+
+# Inicia o loop principal da janela de login
+login_window.mainloop()
