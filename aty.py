@@ -30,6 +30,145 @@ from io import BytesIO
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
 
+def show_login_screen():
+    # Tela de login
+    login_window = tk.Tk()
+    login_window.title("Login")
+    login_window.geometry("600x700")
+    login_window.configure(bg='#2196F3')  # Azul predominante
+    
+    # Centraliza a janela
+    screen_width = login_window.winfo_screenwidth()
+    screen_height = login_window.winfo_screenheight()
+    x = (screen_width/2) - (600/2)
+    y = (screen_height/2) - (700/2)
+    login_window.geometry(f"600x700+{int(x)}+{int(y)}")
+    
+    # Frame principal
+    main_frame = tk.Frame(login_window, bg='#2196F3')  # Fundo azul
+    main_frame.pack(pady=30, fill="both", expand=True)
+    
+    # URLs das imagens
+    sonic_url = "https://raw.githubusercontent.com/zcarlin/Trabalho-Final-Machine-Learn/main/sonic.png"
+    citha_url = "https://raw.githubusercontent.com/zcarlin/Trabalho-Final-Machine-Learn/main/citha.png"
+
+    # Carrega e redimensiona as imagens
+    try:
+        # Carrega imagem do Sonic
+        response = requests.get(sonic_url, timeout=10)
+        if response.status_code == 200:
+            sonic_image = Image.open(BytesIO(response.content))
+            sonic_photo = ImageTk.PhotoImage(sonic_image.resize((150, 150)))
+        else:
+            sonic_photo = None
+        
+        # Carrega imagem da CITHA
+        response = requests.get(citha_url, timeout=10)
+        if response.status_code == 200:
+            citha_image = Image.open(BytesIO(response.content))
+            citha_photo = ImageTk.PhotoImage(citha_image.resize((150, 150)))
+        else:
+            citha_photo = None
+    except Exception as e:
+        messagebox.showerror("Erro", f"Erro ao carregar imagens: {str(e)}")
+        sonic_photo = None
+        citha_photo = None
+
+    # Layout
+    tk.Label(main_frame, text="Sistema de Análise de Safra", 
+             font=('Arial', 24, 'bold'), bg='#2196F3', fg='white').pack(pady=30)
+    
+    # Frame para as imagens
+    image_frame = tk.Frame(main_frame, bg='#2196F3')
+    image_frame.pack(pady=20)
+    
+    if sonic_photo and citha_photo:
+        # Frame para o lado esquerdo (Sonic)
+        left_frame = tk.Frame(image_frame, bg='#2196F3')
+        left_frame.pack(side='left', padx=20)
+        
+        # Frame para o lado direito (Citha)
+        right_frame = tk.Frame(image_frame, bg='#2196F3')
+        right_frame.pack(side='right', padx=20)
+        
+        # Labels com texto
+        tk.Label(left_frame, text="Crias Da Python", font=('Arial', 12, 'bold'), 
+                 bg='#2196F3', fg='white').pack(pady=(0, 5))
+        tk.Label(right_frame, text="IFAM-CITHA", font=('Arial', 12, 'bold'), 
+                 bg='#2196F3', fg='white').pack(pady=(0, 5))
+        
+        # Labels com imagens
+        tk.Label(left_frame, image=sonic_photo, bg='#2196F3').pack()
+        tk.Label(right_frame, image=citha_photo, bg='#2196F3').pack()
+    
+    # Campos de entrada
+    username_var = tk.StringVar()
+    password_var = tk.StringVar()
+    
+    tk.Label(main_frame, text="Usuário:", font=('Arial', 14), bg='#2196F3', fg='white').pack(pady=(30, 10))
+    username_entry = tk.Entry(main_frame, textvariable=username_var, font=('Arial', 14), bg='white')
+    username_entry.pack(pady=10, padx=40, fill="x")
+    
+    tk.Label(main_frame, text="Senha:", font=('Arial', 14), bg='#2196F3', fg='white').pack(pady=10)
+    password_entry = tk.Entry(main_frame, textvariable=password_var, show="*", font=('Arial', 14), bg='white')
+    password_entry.pack(pady=10, padx=40, fill="x")
+    
+    def login(username, password):
+        if username == "Walter Claudino da Silva Júnior" and password == "senha":
+            # Mantém as referências para as imagens antes de destruir a janela
+            main_frame.image1 = sonic_photo
+            main_frame.image2 = citha_photo
+            
+            login_window.destroy()
+            app = SafraAnalysisGUI()
+            app.run()
+        else:
+            messagebox.showerror("Erro", "Usuário ou senha inválidos!")
+            password_var.set("")
+            password_entry.focus()
+
+    # Botão de login
+    login_button = tk.Button(main_frame, text="Login", font=('Arial', 14, 'bold'), 
+                            bg='#4CAF50', fg='white',  # Verde
+                            command=lambda: login(username_var.get(), password_var.get()))
+    login_button.pack(pady=40, padx=40, fill="x")
+
+    # Inicia o loop principal da janela de login
+    login_window.mainloop()
+
+class ToolTip:
+    def __init__(self, widget, text):
+        self.widget = widget
+        self.text = text
+        self.tooltip = None
+        self.widget.bind("<Enter>", self.enter)
+        self.widget.bind("<Leave>", self.leave)
+
+    def enter(self, event=None):
+        x, y, _, _ = self.widget.bbox("insert")
+        x += self.widget.winfo_rootx() + 25
+        y += self.widget.winfo_rooty() + 25
+
+        self.tooltip = tk.Toplevel(self.widget)
+        self.tooltip.wm_overrideredirect(True)
+        self.tooltip.wm_geometry(f"+{x}+{y}")
+
+        label = tk.Label(
+            self.tooltip, 
+            text=self.text, 
+            justify=tk.LEFT,
+            background="#ffffe0", 
+            relief=tk.SOLID, 
+            borderwidth=1,
+            font=("tahoma", "8", "normal")
+        )
+        label.pack()
+
+    def leave(self, event=None):
+        if self.tooltip:
+            self.tooltip.destroy()
+            self.tooltip = None
+
 class SafraAnalysisGUI:
     def __init__(self):
         self.root = ctk.CTk()
@@ -107,9 +246,32 @@ class SafraAnalysisGUI:
         self.setup_main_area()
         
     def setup_sidebar(self):
-        # Frame do sidebar
-        self.sidebar = ctk.CTkFrame(self.main_frame, width=300)
-        self.sidebar.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
+        # Frame do sidebar com scrollbar
+        self.sidebar_container = ctk.CTkFrame(self.main_frame)
+        self.sidebar_container.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
+        
+        # Canvas para scrollbar
+        self.sidebar_canvas = tk.Canvas(self.sidebar_container, bg="#2b2b2b")  # Cor escura padrão do customtkinter
+        self.sidebar_canvas.pack(side="left", fill="both", expand=True)
+        
+        # Scrollbar
+        self.sidebar_scrollbar = ttk.Scrollbar(self.sidebar_container, orient="vertical", command=self.sidebar_canvas.yview)
+        self.sidebar_scrollbar.pack(side="right", fill="y")
+        
+        # Configurar canvas
+        self.sidebar_canvas.configure(yscrollcommand=self.sidebar_scrollbar.set)
+        
+        # Frame do sidebar que será scrollável
+        self.sidebar = ctk.CTkFrame(self.sidebar_canvas, width=300)
+        self.sidebar_canvas.create_window((0, 0), window=self.sidebar, anchor="nw")
+        
+        # Configurar scroll
+        def configure_scroll(event):
+            self.sidebar_canvas.configure(scrollregion=self.sidebar_canvas.bbox("all"))
+            self.sidebar_canvas.itemconfig(self.sidebar_canvas.find_withtag("all")[0], width=event.width)
+        
+        self.sidebar.bind("<Configure>", configure_scroll)
+        self.sidebar_canvas.bind("<Configure>", configure_scroll)
         
         # Título
         title_label = ctk.CTkLabel(
@@ -133,6 +295,7 @@ class SafraAnalysisGUI:
             height=35
         )
         self.load_data_btn.pack(fill="x", padx=10, pady=5)
+        ToolTip(self.load_data_btn, "Carrega o arquivo de dados CSV para análise")
         
         self.create_vars_btn = ctk.CTkButton(
             data_frame, 
@@ -142,6 +305,7 @@ class SafraAnalysisGUI:
             height=35
         )
         self.create_vars_btn.pack(fill="x", padx=10, pady=5)
+        ToolTip(self.create_vars_btn, "Cria variáveis derivadas e transformações dos dados")
         
         # Seção de EDA
         eda_frame = ctk.CTkFrame(self.sidebar)
@@ -170,6 +334,7 @@ class SafraAnalysisGUI:
             width=250
         )
         self.eda_options.pack(padx=10, pady=5)
+        ToolTip(self.eda_options, "Selecione o tipo de visualização exploratória desejada")
         
         self.eda_btn = ctk.CTkButton(
             eda_frame, 
@@ -179,6 +344,7 @@ class SafraAnalysisGUI:
             height=35
         )
         self.eda_btn.pack(fill="x", padx=10, pady=5)
+        ToolTip(self.eda_btn, "Gera a visualização selecionada")
         
         # Seção de Modelos
         models_frame = ctk.CTkFrame(self.sidebar)
@@ -195,6 +361,7 @@ class SafraAnalysisGUI:
             height=35
         )
         self.prep_regression_btn.pack(fill="x", padx=10, pady=5)
+        ToolTip(self.prep_regression_btn, "Prepara os dados para modelos de regressão")
         
         self.train_regression_btn = ctk.CTkButton(
             models_frame, 
@@ -204,6 +371,7 @@ class SafraAnalysisGUI:
             height=35
         )
         self.train_regression_btn.pack(fill="x", padx=10, pady=5)
+        ToolTip(self.train_regression_btn, "Treina os modelos de regressão")
         
         self.prep_classification_btn = ctk.CTkButton(
             models_frame, 
@@ -213,6 +381,7 @@ class SafraAnalysisGUI:
             height=35
         )
         self.prep_classification_btn.pack(fill="x", padx=10, pady=5)
+        ToolTip(self.prep_classification_btn, "Prepara os dados para modelos de classificação")
         
         self.train_classification_btn = ctk.CTkButton(
             models_frame, 
@@ -222,6 +391,7 @@ class SafraAnalysisGUI:
             height=35
         )
         self.train_classification_btn.pack(fill="x", padx=10, pady=5)
+        ToolTip(self.train_classification_btn, "Treina os modelos de classificação")
         
         # Seção de Aprendizado por Reforço
         rl_frame = ctk.CTkFrame(self.sidebar)
@@ -238,6 +408,7 @@ class SafraAnalysisGUI:
         )
         self.rl_mode.set("padrão")
         self.rl_mode.pack(padx=10, pady=5)
+        ToolTip(self.rl_mode, "Selecione o modo de recompensa para o Q-learning")
 
         # Adiciona combobox para seleção de episódios
         self.rl_episodes = ctk.CTkComboBox(
@@ -248,6 +419,7 @@ class SafraAnalysisGUI:
         )
         self.rl_episodes.set("201")
         self.rl_episodes.pack(padx=10, pady=5)
+        ToolTip(self.rl_episodes, "Selecione o número de episódios para treinamento")
 
         # Adiciona combobox para seleção do epsilon
         epsilon_label = ctk.CTkLabel(rl_frame, text="Taxa de Exploração (epsilon):", font=ctk.CTkFont(size=12))
@@ -261,6 +433,7 @@ class SafraAnalysisGUI:
         )
         self.rl_epsilon.set("0.9")
         self.rl_epsilon.pack(padx=10, pady=5)
+        ToolTip(self.rl_epsilon, "Selecione a taxa de exploração para o Q-learning")
         
         self.rl_btn = ctk.CTkButton(
             rl_frame, 
@@ -269,6 +442,7 @@ class SafraAnalysisGUI:
             height=35
         )
         self.rl_btn.pack(fill="x", padx=10, pady=5)
+        ToolTip(self.rl_btn, "Executa o algoritmo de Q-learning com os parâmetros selecionados")
         
         # Botão Pipeline Completo
         self.pipeline_btn = ctk.CTkButton(
@@ -280,6 +454,7 @@ class SafraAnalysisGUI:
             font=ctk.CTkFont(size=14, weight="bold")
         )
         self.pipeline_btn.pack(fill="x", padx=10, pady=20)
+        ToolTip(self.pipeline_btn, "Executa todo o pipeline de análise automaticamente")
         
     def setup_main_area(self):
         # Notebook para abas
@@ -328,9 +503,39 @@ class SafraAnalysisGUI:
         viz_label = ctk.CTkLabel(self.viz_frame, text="Área de Visualizações", font=ctk.CTkFont(size=14, weight="bold"))
         viz_label.pack(pady=5)
         
+        # Container para plot com scrollbar
+        self.plot_container = ctk.CTkFrame(self.viz_frame)
+        self.plot_container.pack(fill="both", expand=True, padx=10, pady=10)
+        
+        # Canvas para scrollbar
+        self.plot_canvas = tk.Canvas(self.plot_container, bg="#2b2b2b")
+        self.plot_canvas.pack(side="left", fill="both", expand=True)
+        
+        # Scrollbar vertical
+        self.plot_scrollbar_y = ttk.Scrollbar(self.plot_container, orient="vertical", command=self.plot_canvas.yview)
+        self.plot_scrollbar_y.pack(side="right", fill="y")
+        
+        # Scrollbar horizontal
+        self.plot_scrollbar_x = ttk.Scrollbar(self.plot_container, orient="horizontal", command=self.plot_canvas.xview)
+        self.plot_scrollbar_x.pack(side="bottom", fill="x")
+        
+        # Configurar canvas
+        self.plot_canvas.configure(
+            yscrollcommand=self.plot_scrollbar_y.set,
+            xscrollcommand=self.plot_scrollbar_x.set
+        )
+        
         # Frame para matplotlib
-        self.plot_frame = ctk.CTkFrame(self.viz_frame)
-        self.plot_frame.pack(fill="both", expand=True, padx=10, pady=10)
+        self.plot_frame = ctk.CTkFrame(self.plot_canvas)
+        self.plot_canvas.create_window((0, 0), window=self.plot_frame, anchor="nw")
+        
+        # Configurar scroll
+        def configure_scroll(event):
+            self.plot_canvas.configure(scrollregion=self.plot_canvas.bbox("all"))
+            self.plot_canvas.itemconfig(self.plot_canvas.find_withtag("all")[0], width=event.width)
+        
+        self.plot_frame.bind("<Configure>", configure_scroll)
+        self.plot_canvas.bind("<Configure>", configure_scroll)
         
         # Frame para botões de navegação dos gráficos
         self.nav_frame = ctk.CTkFrame(self.viz_frame)
@@ -445,9 +650,22 @@ class SafraAnalysisGUI:
         self.clear_plot()
         
         if 0 <= self.current_plot_index < len(self.plots):
-            canvas = FigureCanvasTkAgg(self.plots[self.current_plot_index], master=self.plot_frame)
+            # Criar um frame para o canvas do matplotlib
+            plot_container = ctk.CTkFrame(self.plot_frame)
+            plot_container.pack(fill="both", expand=True, pady=10)
+            
+            # Criar o canvas do matplotlib
+            canvas = FigureCanvasTkAgg(self.plots[self.current_plot_index], master=plot_container)
             canvas.draw()
-            canvas.get_tk_widget().pack(fill="both", expand=True, pady=10)
+            
+            # Adicionar o canvas ao frame
+            canvas.get_tk_widget().pack(fill="both", expand=True)
+            
+            # Adicionar barra de ferramentas de navegação do matplotlib
+            from matplotlib.backends.backend_tkagg import NavigationToolbar2Tk
+            toolbar = NavigationToolbar2Tk(canvas, plot_container)
+            toolbar.update()
+            canvas.get_tk_widget().pack(fill="both", expand=True)
         
         # Atualiza estado dos botões de navegação
         self.update_nav_buttons()
@@ -1407,107 +1625,4 @@ class SafraAnalysisGUI:
         self.root.mainloop()
 
 if __name__ == "__main__":
-    # Tela de login
-    login_window = tk.Tk()
-    login_window.title("Login")
-    login_window.geometry("600x700")
-    login_window.configure(bg='#2196F3')  # Azul predominante
-    
-# Centraliza a janela
-screen_width = login_window.winfo_screenwidth()
-screen_height = login_window.winfo_screenheight()
-x = (screen_width/2) - (600/2)
-y = (screen_height/2) - (700/2)
-login_window.geometry(f"600x700+{int(x)}+{int(y)}")
-    
-# Frame principal
-main_frame = tk.Frame(login_window, bg='#2196F3')  # Fundo azul
-main_frame.pack(pady=30, fill="both", expand=True)
-    
-# URLs das imagens
-sonic_url = "https://raw.githubusercontent.com/zcarlin/Trabalho-Final-Machine-Learn/main/sonic.png"
-citha_url = "https://raw.githubusercontent.com/zcarlin/Trabalho-Final-Machine-Learn/main/citha.png"
-
-# Carrega e redimensiona as imagens
-try:
-    # Carrega imagem do Sonic
-    response = requests.get(sonic_url, timeout=10)
-    if response.status_code == 200:
-        sonic_image = Image.open(BytesIO(response.content))
-        sonic_photo = ImageTk.PhotoImage(sonic_image.resize((150, 150)))
-    else:
-        sonic_photo = None
-    
-    # Carrega imagem da CITHA
-    response = requests.get(citha_url, timeout=10)
-    if response.status_code == 200:
-        citha_image = Image.open(BytesIO(response.content))
-        citha_photo = ImageTk.PhotoImage(citha_image.resize((150, 150)))
-    else:
-        citha_photo = None
-except Exception as e:
-    messagebox.showerror("Erro", f"Erro ao carregar imagens: {str(e)}")
-    sonic_photo = None
-    citha_photo = None
-
-# Layout
-tk.Label(main_frame, text="Sistema de Análise de Safra", 
-         font=('Arial', 24, 'bold'), bg='#2196F3', fg='white').pack(pady=30)
-    
-# Frame para as imagens
-image_frame = tk.Frame(main_frame, bg='#2196F3')
-image_frame.pack(pady=20)
-    
-if sonic_photo and citha_photo:
-    # Frame para o lado esquerdo (Sonic)
-    left_frame = tk.Frame(image_frame, bg='#2196F3')
-    left_frame.pack(side='left', padx=20)
-        
-    # Frame para o lado direito (Citha)
-    right_frame = tk.Frame(image_frame, bg='#2196F3')
-    right_frame.pack(side='right', padx=20)
-        
-    # Labels com texto
-    tk.Label(left_frame, text="Crias Da Python", font=('Arial', 12, 'bold'), 
-             bg='#2196F3', fg='white').pack(pady=(0, 5))
-    tk.Label(right_frame, text="IFAM-CITHA", font=('Arial', 12, 'bold'), 
-             bg='#2196F3', fg='white').pack(pady=(0, 5))
-        
-    # Labels com imagens
-    tk.Label(left_frame, image=sonic_photo, bg='#2196F3').pack()
-    tk.Label(right_frame, image=citha_photo, bg='#2196F3').pack()
-    
-# Campos de entrada
-username_var = tk.StringVar()
-password_var = tk.StringVar()
-    
-tk.Label(main_frame, text="Usuário:", font=('Arial', 14), bg='#2196F3', fg='white').pack(pady=(30, 10))
-username_entry = tk.Entry(main_frame, textvariable=username_var, font=('Arial', 14), bg='white')
-username_entry.pack(pady=10, padx=40, fill="x")
-    
-tk.Label(main_frame, text="Senha:", font=('Arial', 14), bg='#2196F3', fg='white').pack(pady=10)
-password_entry = tk.Entry(main_frame, textvariable=password_var, show="*", font=('Arial', 14), bg='white')
-password_entry.pack(pady=10, padx=40, fill="x")
-    
-def login(username, password):
-    if username == "teste" and password == "teste":
-        # Mantém as referências para as imagens antes de destruir a janela
-        main_frame.image1 = sonic_photo
-        main_frame.image2 = citha_photo
-        
-        login_window.destroy()
-        app = SafraAnalysisGUI()
-        app.run()
-    else:
-        messagebox.showerror("Erro", "Usuário ou senha inválidos!")
-        password_var.set("")
-        password_entry.focus()
-
-# Botão de login
-login_button = tk.Button(main_frame, text="Login", font=('Arial', 14, 'bold'), 
-                        bg='#4CAF50', fg='white',  # Verde
-                        command=lambda: login(username_var.get(), password_var.get()))
-login_button.pack(pady=40, padx=40, fill="x")
-
-# Inicia o loop principal da janela de login
-login_window.mainloop()
+    show_login_screen()
