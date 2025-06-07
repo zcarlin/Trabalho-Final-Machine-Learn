@@ -64,6 +64,7 @@ python aty.py
 
 Contribuições são bem-vindas! Sinta-se à vontade para abrir issues ou pull requests.
 
-## Licença
+## LOGIN
 
-Este projeto está sob licença MIT. Veja o arquivo LICENSE para mais detalhes.
+- Usuario: Walter Claudino da Silva Júnior 
+- Senha: senha
