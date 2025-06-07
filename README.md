@@ -38,7 +38,7 @@ python aty.py
 
 2. Faça login com as credenciais:
    - Usuário: Walter Claudino da Silva Junior
-   - Senha: SonicAutista
+   - Senha: senha
 
 3. Explore as diferentes funcionalidades através das abas da interface
 
@@ -63,8 +63,3 @@ python aty.py
 ## Contribuição
 
 Contribuições são bem-vindas! Sinta-se à vontade para abrir issues ou pull requests.
-
-## LOGIN
-
-- Usuario: Walter Claudino da Silva Júnior 
-- Senha: senha
